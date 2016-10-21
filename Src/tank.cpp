@@ -1,3 +1,4 @@
+#include "station.h"
 #include "tank.h"
 
 Tank::Tank()
@@ -27,7 +28,7 @@ Tank::~Tank()
 
 float Tank::decrement()
 {
-	int newVal;
+	float newVal;
 	
 	mRemain->Wait();
 	this->remaining = this->remaining - 1;
@@ -40,7 +41,7 @@ float Tank::decrement()
 
 float Tank::fill()
 {
-	int newVal;
+	float newVal;
 
 	mRemain->Wait();
 	this->remaining = MAX_CAPACITY;

@@ -3,11 +3,6 @@
 
 #include "rt/rt.h"
 
-// Constants for the fuel type
-enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
-
-// Capacity of the fuel tank
-#define MAX_CAPACITY 500
 
 class Tank
 {
