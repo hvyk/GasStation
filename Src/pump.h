@@ -1,26 +1,36 @@
 #include "rt/rt.h"
+#include "station.h"
 
-struct Transaction
+
+class Pump : public ActiveClass
 {
-	std::string name;
-	std::string ccNum;
-	std::string time; // time_t to c_time to _std::string
-	FuelType type;
-	int quantity;
-};
+private:
 
-struct PumpStatus
-{
-	// The details about the transaction
-	Transaction trans;
-	// A flag to indicate that the transaction approved and pump is ready
-	bool pumpReady;
-};
+public:
+	int main(void)
+	{
+			CPipe pipe("testPipe", 1024);
+		for (int i = 0; i < 20; i++)
+		{
+			int x;
+			printf("starting pump\n");
+			//for (int i = 0; i < 24; i++)
+			//while (true)
+			//{
+				//CPipe pipe1("transactionPipe", 1024);
+				//Transaction trans;
+				//pipe1.Read(&trans, sizeof(trans));
 
-//class Pump
-//{
-//private:
-//
-//public:
-//
-//};
+				//printf("\n\nTransaction: %s, %s, %s, %d, %1.1f\n", trans.name.c_str(), trans.ccNum.c_str(), trans.time.c_str(), trans.type, trans.quantity);
+			//}
+
+			pipe.Read(&x, sizeof(x));
+
+			printf("the value for x was %d\n", x);
+		}
+		getchar();
+
+		return 0;
+	}
+
+};

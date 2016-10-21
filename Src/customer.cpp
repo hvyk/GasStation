@@ -6,7 +6,6 @@ void Customer::generateName()
 	std::vector<std::string> firstNames = { "Bobby", "Johnny", "Jimbo", "Sean", "Don", "R2" };
 	std::vector<std::string> lastNames = { "Dan", "McCallum", "Baggins", "Piccard", "Riker", "D2" };
 
-	std::srand(time(NULL));
 
 	this->firstName = firstNames[std::rand() % 6];
 	this->lastName = lastNames[std::rand() % 6];
