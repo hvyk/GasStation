@@ -1,3 +1,4 @@
+#include <string>
 #include "rt/rt.h"
 #include "station.h"
 
@@ -5,30 +6,49 @@
 class Pump : public ActiveClass
 {
 private:
+	struct Transaction *transDP;
+	CSemaphore *PS1;
+	CSemaphore *CS1;
 
 public:
+	Pump();
+	//Pump();
+	~Pump();
+
 	int main(void)
 	{
-			CPipe pipe("testPipe", 1024);
+		CDataPool pumpDP("PumpDP", sizeof(Transaction));
+		transDP = (struct Transaction *)(pumpDP.LinkDataPool());
+
 		for (int i = 0; i < 20; i++)
 		{
-			int x;
-			printf("starting pump\n");
-			//for (int i = 0; i < 24; i++)
-			//while (true)
-			//{
-				//CPipe pipe1("transactionPipe", 1024);
-				//Transaction trans;
-				//pipe1.Read(&trans, sizeof(trans));
+			// Simulate a simplified customer transaction	
+			std::string name = "Sean";
+			float quantity = (float)(std::rand() % 130) / 2;
+			FuelType type = FuelType(std::rand() % 4);
 
-				//printf("\n\nTransaction: %s, %s, %s, %d, %1.1f\n", trans.name.c_str(), trans.ccNum.c_str(), trans.time.c_str(), trans.type, trans.quantity);
-			//}
+			// We are the producer
+			CS1->Wait();
+			transDP->ready = false;
+			transDP->name = name;
+			transDP->type = type;
+			transDP->quantity = quantity;
+			PS1->Signal();
 
-			pipe.Read(&x, sizeof(x));
+			// Now we are the consumer
+			PS1->Wait();
+			bool readyFlg = transDP->ready;
+			name = transDP->name;
+			type = transDP->type;
+			quantity = transDP->quantity;
+			CS1->Signal();
 
-			printf("the value for x was %d\n", x);
+			//printf("%s, %s, %d, %1.1f/n",
+			//	readyFlg ? "true" : "false",
+			//	name.c_str(),
+			//	type,
+			//	quantity);
 		}
-		getchar();
 
 		return 0;
 	}

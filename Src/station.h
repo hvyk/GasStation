@@ -36,9 +36,8 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
  ***********************************************************/
 struct Transaction
 {
+	bool ready;
 	std::string name;
-	std::string ccNum;
-	std::string time; // time_t to c_time to _std::string
 	FuelType type;
 	float quantity;
 };
@@ -50,6 +49,7 @@ struct PumpStatus
 	// A flag to indicate that the transaction approved and pump is ready
 	bool pumpReady;
 };
+
 
 
 #endif // __STATION_H__
