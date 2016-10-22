@@ -2,6 +2,7 @@
 #define __STATION_H__
 
 #include <string>
+#include <time.h>
 
 /*
  * This header file contains all the data structure to be used
@@ -9,6 +10,8 @@
  * for homogeneity across all classes 
  */
 
+
+#define NUM_PUMPS	4
 
 
 /***********************************************************
@@ -41,6 +44,18 @@ struct Transaction
 	FuelType type;
 	float quantity;
 };
+
+
+
+//struct Transaction
+//{
+//	std::string firstName;
+//	std::string lastName;
+//	std::string ccNum;
+//	time_t time;
+//	FuelType type;
+//	float quanitity;
+//};
 
 struct PumpStatus
 {
