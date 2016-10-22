@@ -1,6 +1,7 @@
 #include "rt/rt.h"
 #include "customer.h"
 #include "pump.h"
+#include "tank.h"
 
 
 // Sends the data stored in trans to the datapool given by transDP
@@ -23,8 +24,13 @@ UINT __stdcall pumpThread(void *args);
 // This is the gas station computer
 int main(int argc, char* argv[])
 {
+	vector<FuelTank *> fuelTanks;
 	// Create the fuel tank
-	// ...
+	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	{
+		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+		fuelTanks.push_back(tank_i);
+	}
 
 	vector<CThread *> threads;
 	printf("Creating %d threads\n", NUM_PUMPS);
@@ -39,7 +45,19 @@ int main(int argc, char* argv[])
 
 	printf("Done generating the threads, let them work\n");
 	getchar();
-	
+
+	// Application starts here
+	printf("Starting application\n");
+	while (1)
+	{
+		printf("%1.1f\n", fuelTanks[0]->getRemaining());
+		printf("%1.1f\n", fuelTanks[1]->getRemaining());
+		printf("%1.1f\n", fuelTanks[1]->getRemaining());
+		printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
+		Sleep(1000);
+	}
+	// Application ends here
+
 	for (int i = 0; i < NUM_PUMPS; i++)
 	{
 		delete threads[i];

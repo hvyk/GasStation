@@ -1,4 +1,6 @@
 #include <time.h>
+#include <vector>
+#include "tank.h"
 #include "pump.h"
 
 // Baaad, don't use this constructor for more than one pump
@@ -10,6 +12,14 @@ Pump::Pump()
 
 	PS1 = new CSemaphore("Producer0", 0, 1);
 	CS1 = new CSemaphore("Consumer0", 1, 1);
+
+
+	// Need access to the fuel tank data pools
+	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	{
+		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+		fuelTanks.push_back(tank_i);
+	}
 }
 
 
@@ -24,6 +34,14 @@ Pump::Pump(int id)
 
 	PS1 = new CSemaphore(producerName, 0, 1);
 	CS1 = new CSemaphore(consumerName, 1, 1);
+
+
+	// Need access to the fuel tank data pools
+	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	{
+		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+		fuelTanks.push_back(tank_i);
+	}
 }
 
 
@@ -113,4 +131,22 @@ void Pump::printTransaction(Transaction *trans, int id, bool producing)
 	printf("\t%s", transTime); // \n char added by ctime(...)
 	printf("\t%s\n", fType);
 	printf("\t%1.1f\n\n", trans->quantity);
+}
+
+
+// Needs to pass information to the FuelTanks to reduce their ammount
+// Also need to pass real time information to the real-time monitoring window
+int Pump::dispense(FuelType type, float quantity)
+{
+	if (fuelTanks[type]->getRemaining() < quantity)
+	{
+		return -1;
+	}
+	while (quantity > 0)
+	{
+		fuelTanks[type]->decrement();
+		quantity -= 0.5;
+		Sleep(1000);
+	}
+	return 0;
 }

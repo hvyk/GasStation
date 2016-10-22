@@ -2,24 +2,33 @@
 #define __TANK_H__
 
 #include "rt/rt.h"
+#include "station.h"
+
+struct Tank {
+	float remaining;
+	FuelType type;
+};
 
 
-class Tank
+class FuelTank
 {
 private:
 	// litres remaining in tank
-	float remaining;
+	//float remaining;
 	// Type of fuel
-	vector<FuelType> types;
+	//FuelType type;
+
+	CDataPool *theDataPool;
+	struct Tank *tank;
 
 	// Mutex to project the remaining amount of fuel
 	CMutex *mRemain;
 
 public:
-	Tank();
-	//Tank(FuelType type, float remaining);
-	Tank(const Tank &obj);
-	~Tank();
+	FuelTank();
+	FuelTank(FuelType type, float remaining);
+	FuelTank(const FuelTank &obj);
+	~FuelTank();
 
 	// decrements the tank by 1 litre and returns the number of litres left
 	float decrement();
@@ -28,7 +37,7 @@ public:
 	// returns the amount of fuel remaining
 	float getRemaining();
 	// returns the type of fuel in the tank
-	//FuelType getType();
+	FuelType getType();
 };
 
 

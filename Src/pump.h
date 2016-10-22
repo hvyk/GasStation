@@ -1,6 +1,7 @@
 #include <string>
 #include "rt/rt.h"
 #include "station.h"
+#include "tank.h"
 
 
 class Pump : public ActiveClass
@@ -15,7 +16,6 @@ private:
 	CSemaphore *PS1;
 	CSemaphore *CS1;
 
-
 	// Sends the data stored in trans to the datapool given by transDP
 	void Produce(Transaction *trans);
 	// Receives the data stored in trans to the datapool given by transDP
@@ -26,10 +26,14 @@ private:
 	std::string generateCC();
 	void printTransaction(Transaction *trans, int id, bool producing);
 
+	vector<FuelTank *> fuelTanks;
+
 public:
 	Pump();
 	Pump(int id);
 	~Pump();
+
+	int dispense(FuelType type, float quantity);
 
 	int main(void)
 	{
@@ -37,7 +41,7 @@ public:
 		CDataPool *pumpDP = new CDataPool(dpName, sizeof(Transaction));
 		transDP = (struct Transaction *)(pumpDP->LinkDataPool());
 
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < 4; i++)
 		{
 			// Simulate a simplified customer transaction	
 			Transaction trans = generateTransaction();
@@ -55,8 +59,9 @@ public:
 			printTransaction(&trans, id, false);
 			CS1->Signal();
 			
-			// Now ready to pump the gas
-
+			// Now ready to pump the gas - not working
+			dispense(trans.type, trans.quantity);
+			
 		}
 
 		return 0;
