@@ -1,3 +1,4 @@
+#include <time.h>
 #include "pump.h"
 
 // Baaad, don't use this constructor for more than one pump
@@ -36,7 +37,10 @@ Pump::~Pump()
 void Pump::Produce(Transaction *trans)
 {
 	transDP->ready = trans->ready;
-	transDP->name = trans->name;
+	transDP->firstName = trans->firstName;
+	transDP->lastName = trans->lastName;
+	transDP->ccNum = trans->ccNum;
+	transDP->time = trans->time;
 	transDP->type = trans->type;
 	transDP->quantity = trans->quantity;
 }
@@ -45,7 +49,68 @@ void Pump::Produce(Transaction *trans)
 void Pump::Consume(Transaction *trans)
 {
 	trans->ready = transDP->ready;
-	trans->name = transDP->name;
+	trans->firstName = transDP->firstName;
+	trans->lastName = transDP->lastName;
+	trans->ccNum = transDP->ccNum;
+	trans->time	= transDP->time;
 	trans->type	= transDP->type;
 	trans->quantity = transDP->quantity;
+}
+
+Transaction Pump::generateTransaction()
+{
+	std::string firstName = "Bobby";
+	std::string lastName = "Dan";
+	std::string ccNum = generateCC();
+	time_t		now = time(0);
+	FuelType	type = FuelType(std::rand() % 4);
+	float		quantity = (float)(std::rand() % 130) / 2;
+
+	Transaction trans = { false, firstName, lastName, ccNum, now, type, quantity };
+	return trans;
+}
+
+
+std::string Pump::generateCC()
+{
+	std::string tmp;
+	int num;
+	for (int i = 0; i < CC_LENGTH; i++)
+	{
+		num = rand() % 9;
+		if ( i > 0 && i % 4 == 0)
+			tmp += " ";
+		tmp += std::to_string(num);
+	}
+	return tmp;
+}
+
+
+void Pump::printTransaction(Transaction *trans, int id, bool producing)
+{
+	char *fType = "OCTANE 87";
+	switch (trans->type)
+	{
+	case OCTANE87:
+		fType = "OCTANE 87";
+		break;
+	case OCTANE89:
+		fType = "OCTANE 89";
+		break;
+	case OCTANE91:
+		fType = "OCTANE 91";
+		break;
+	case OCTANE94:
+		fType = "OCTANE 94";
+		break;
+	}
+
+	char *transTime = ctime(&(trans->time));
+
+	printf("\tPump %d is %s\n", id, producing ? "Producing" : "Consuming");
+	printf("\t%s %s\n", trans->firstName.c_str(), trans->lastName.c_str());
+	printf("\t%s\n", trans->ccNum.c_str());
+	printf("\t%s", transTime); // \n char added by ctime(...)
+	printf("\t%s\n", fType);
+	printf("\t%1.1f\n\n", trans->quantity);
 }

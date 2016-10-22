@@ -27,6 +27,7 @@
  ***********************************************************/
 
 // Constants for the fuel type
+#define NUM_FUELTYPES	4
 enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 
 // Capacity of the fuel tank
@@ -37,25 +38,26 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 /***********************************************************
  *						Pumps
  ***********************************************************/
+//struct Transaction
+//{
+//	bool ready;
+//	std::string name;
+//	FuelType type;
+//	float quantity;
+//};
+
+
+
 struct Transaction
 {
 	bool ready;
-	std::string name;
+	std::string firstName;
+	std::string lastName;
+	std::string ccNum;
+	time_t time;
 	FuelType type;
 	float quantity;
 };
-
-
-
-//struct Transaction
-//{
-//	std::string firstName;
-//	std::string lastName;
-//	std::string ccNum;
-//	time_t time;
-//	FuelType type;
-//	float quanitity;
-//};
 
 struct PumpStatus
 {

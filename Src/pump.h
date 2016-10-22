@@ -15,8 +15,16 @@ private:
 	CSemaphore *PS1;
 	CSemaphore *CS1;
 
+
+	// Sends the data stored in trans to the datapool given by transDP
 	void Produce(Transaction *trans);
+	// Receives the data stored in trans to the datapool given by transDP
 	void Consume(Transaction *trans);
+
+	// Dummy code for testing until a Customer class is created
+	Transaction generateTransaction();
+	std::string generateCC();
+	void printTransaction(Transaction *trans, int id, bool producing);
 
 public:
 	Pump();
@@ -32,43 +40,23 @@ public:
 		for (int i = 0; i < 2; i++)
 		{
 			// Simulate a simplified customer transaction	
-			std::string name = "Sean";
-			float quantity = (float)(std::rand() % 130) / 2;
-			FuelType type = FuelType(std::rand() % 4);
+			Transaction trans = generateTransaction();
 
-
-			// We are the producer
+			// We are the producer - want to send status info to GSC
 			CS1->Wait();
-			Transaction trans = { false, name, type, quantity };
 			Produce(&trans);
-			//transDP->ready = false;
-			//transDP->name = name;
-			//transDP->type = type;
-			//transDP->quantity = quantity;
+			printTransaction(&trans, id, true);
 			PS1->Signal();
 
-			printf("Pump %d Producing:\t%s, %s, %d, %1.1f\n\n",
-				id,
-				"false",
-				name.c_str(),
-				type,
-				quantity);
-
-			// Now we are the consumer
+			// Now we are the consumer - waiting for GSC's go-ahead on when
+			// to start the pump
 			PS1->Wait();
 			Consume(&trans);
-			//bool readyFlg = transDP->ready;
-			//name = transDP->name;
-			//type = transDP->type;
-			//quantity = transDP->quantity;
+			printTransaction(&trans, id, false);
 			CS1->Signal();
+			
+			// Now ready to pump the gas
 
-			printf("Pump %d Consuming:\t%s, %s, %d, %1.1f\n\n",
-				id,
-				trans.ready? "true" : "false",
-				trans.name.c_str(),
-				trans.type,
-				trans.quantity);
 		}
 
 		return 0;
