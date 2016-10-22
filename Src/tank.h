@@ -10,14 +10,14 @@ private:
 	// litres remaining in tank
 	float remaining;
 	// Type of fuel
-	FuelType type;
+	vector<FuelType> types;
 
 	// Mutex to project the remaining amount of fuel
 	CMutex *mRemain;
 
 public:
 	Tank();
-	Tank(float remaining, FuelType type);
+	//Tank(FuelType type, float remaining);
 	Tank(const Tank &obj);
 	~Tank();
 
@@ -28,7 +28,7 @@ public:
 	// returns the amount of fuel remaining
 	float getRemaining();
 	// returns the type of fuel in the tank
-	FuelType getType();
+	//FuelType getType();
 };
 
 

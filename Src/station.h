@@ -2,6 +2,7 @@
 #define __STATION_H__
 
 #include <string>
+#include <time.h>
 
 /*
  * This header file contains all the data structure to be used
@@ -9,6 +10,8 @@
  * for homogeneity across all classes 
  */
 
+
+#define NUM_PUMPS	4
 
 
 /***********************************************************
@@ -24,6 +27,7 @@
  ***********************************************************/
 
 // Constants for the fuel type
+#define NUM_FUELTYPES	4
 enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 
 // Capacity of the fuel tank
@@ -34,11 +38,23 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 /***********************************************************
  *						Pumps
  ***********************************************************/
+//struct Transaction
+//{
+//	bool ready;
+//	std::string name;
+//	FuelType type;
+//	float quantity;
+//};
+
+
+
 struct Transaction
 {
-	std::string name;
+	bool ready;
+	std::string firstName;
+	std::string lastName;
 	std::string ccNum;
-	std::string time; // time_t to c_time to _std::string
+	time_t time;
 	FuelType type;
 	float quantity;
 };
@@ -50,6 +66,7 @@ struct PumpStatus
 	// A flag to indicate that the transaction approved and pump is ready
 	bool pumpReady;
 };
+
 
 
 #endif // __STATION_H__

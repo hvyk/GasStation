@@ -3,16 +3,16 @@
 
 Tank::Tank()
 {
-	this->remaining = 0;
+	this->remaining = MAX_CAPACITY;
 	this->type = OCTANE87;
 	mRemain = new CMutex("remaining", 1);
 }
 
-Tank::Tank(float remaining, FuelType type)
-{
-	this->remaining = remaining;
-	this->type = type;
-	mRemain = new CMutex("remaining", 1);
+//Tank::Tank(FuelType type, float remaining)
+//{
+//	this->remaining = remaining;
+//	this->type = type;
+//	mRemain = new CMutex("remaining", 1);
 }
 
 Tank::Tank(const Tank &obj)
@@ -62,7 +62,7 @@ float Tank::getRemaining()
 	return retVal;
 }
 
-FuelType Tank::getType()
-{
-	return type;
-}
+//FuelType Tank::getType()
+//{
+//	return type;
+//}
