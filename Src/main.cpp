@@ -19,7 +19,6 @@ void ReadPumpStatus(struct Transaction *transDP, Transaction *trans);
 // Test function to verify the transactions are right
 void printTransaction(Transaction *trans);
 
-
 // A thread to initialize the thread responsible for the pump
 // @param
 //		args: takes a pointer to an integer with the thread number which
@@ -50,47 +49,49 @@ int main(int argc, char* argv[])
 		Sleep(100);
 	}
 
-	printf("Done generating the threads, let them work\n");
-	getchar();
+	// Add rendezvous event here
 
-	// Mutex for protecting the console window
-	CSemaphore ConsoleMutex("ConsoleMutex", 1);
+	//printf("Done generating the threads, let them work\n");
+	//getchar();
 
-	// Application starts here
-	//printf("Starting application\n");
-	while (1)
-	{
-		ConsoleMutex.Wait();
-		MOVE_CURSOR(10, 10);
-		printf("%1.1f\n", fuelTanks[0]->getRemaining());
-		ConsoleMutex.Signal();
+	//// Mutex for protecting the console window
+	//CSemaphore ConsoleMutex("ConsoleMutex", 1);
 
-		ConsoleMutex.Wait();
-		MOVE_CURSOR(10, 20);
-		printf("%1.1f\n", fuelTanks[1]->getRemaining());
-		ConsoleMutex.Signal();
+	//// Application starts here
+	////printf("Starting application\n");
+	//while (1)
+	//{
+	//	ConsoleMutex.Wait();
+	//	MOVE_CURSOR(10, 10);
+	//	printf("%1.1f\n", fuelTanks[0]->getRemaining());
+	//	ConsoleMutex.Signal();
 
-		ConsoleMutex.Wait();
-		MOVE_CURSOR(10, 30);
-		printf("%1.1f\n", fuelTanks[1]->getRemaining());
-		ConsoleMutex.Signal();
+	//	ConsoleMutex.Wait();
+	//	MOVE_CURSOR(10, 20);
+	//	printf("%1.1f\n", fuelTanks[1]->getRemaining());
+	//	ConsoleMutex.Signal();
 
-		ConsoleMutex.Wait();
-		MOVE_CURSOR(10, 40);
-		printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
-		ConsoleMutex.Signal();
+	//	ConsoleMutex.Wait();
+	//	MOVE_CURSOR(10, 30);
+	//	printf("%1.1f\n", fuelTanks[1]->getRemaining());
+	//	ConsoleMutex.Signal();
 
-		Sleep(1000);
-	}
-	// Application ends here
+	//	ConsoleMutex.Wait();
+	//	MOVE_CURSOR(10, 40);
+	//	printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
+	//	ConsoleMutex.Signal();
 
-	for (int i = 0; i < NUM_PUMPS; i++)
-	{
-		delete threads[i];
-	}
+	//	Sleep(1000);
+	//}
+	//// Application ends here
 
-	printf("Done\n");
-	getchar();
+	//for (int i = 0; i < NUM_PUMPS; i++)
+	//{
+	//	delete threads[i];
+	//}
+
+	//printf("Done\n");
+	//getchar();
 	return 0;
 }
 
@@ -103,74 +104,78 @@ int main(int argc, char* argv[])
  */
 UINT __stdcall pumpThread(void *args)
 {
-	// Create a name for the data pool given by the index
-	int id = *(int*)args;
-	std::string dpName = "PumpStatusDP" + std::to_string(id);
-	
-	// Create the datapool 
-	CDataPool pumpDP(dpName, sizeof(Transaction));
-	struct Transaction *transDP = (struct Transaction *)(pumpDP.LinkDataPool());
 
-	// Create the Producer and Consumer Semaphores and give them a name and
-	// index aligned with this threads index/id
-	std::string producerName = "Producer" + std::to_string(id);
-	std::string consumerName = "Consumer" + std::to_string(id);
+	// Add rendezvous event here
 
-	// These shouldn't have to be pointers
-	//CSemaphore *PS1 = new CSemaphore(producerName, 0, 1);
-	//CSemaphore *CS1 = new CSemaphore(consumerName, 1, 1);
-	CSemaphore PS1(producerName, 0, 1);
-	CSemaphore CS1(consumerName, 1, 1);
 
-	// Spawn a pump active object
-	Pump pump(id);
-	pump.Resume();
+	//// Create a name for the data pool given by the index
+	//int id = *(int*)args;
+	//std::string dpName = "PumpStatusDP" + std::to_string(id);
+	//
+	//// Create the datapool 
+	//CDataPool pumpDP(dpName, sizeof(Transaction));
+	//struct Transaction *transDP = (struct Transaction *)(pumpDP.LinkDataPool());
 
-	// probably want to set the rendezvous here
+	//// Create the Producer and Consumer Semaphores and give them a name and
+	//// index aligned with this threads index/id
+	//std::string producerName = "StatusProducer" + std::to_string(id);
+	//std::string consumerName = "StatusConsumer" + std::to_string(id);
 
-	// Console Mutex for GSC
-	CSemaphore ConsoleMutex("ConsoleMutex", 1);
+	//// These shouldn't have to be pointers
+	////CSemaphore *PS1 = new CSemaphore(producerName, 0, 1);
+	////CSemaphore *CS1 = new CSemaphore(consumerName, 1, 1);
+	//CSemaphore PS1(producerName, 0, 1);
+	//CSemaphore CS1(consumerName, 1, 1);
 
-	// why a for loop??? Is it just the number of customers we want?
-	for (int i = 0; i < 2; i++)
-	{
-		// We are the consumer - read the data stored in the data pool and
-		PS1.Wait();
-		Transaction trans;
-		ReadPumpStatus(transDP, &trans);
-		CS1.Signal();
+	//// Spawn a pump active object
+	//Pump pump(id);
+	//pump.Resume();
 
-		ConsoleMutex.Wait();
-		MOVE_CURSOR(10, id * 10 + 1);
-		printf("%s %s", trans.firstName, trans.lastName);
-		MOVE_CURSOR(10, id * 10 + 2);
-		printf("OCTANE 4 Million");
-		MOVE_CURSOR(10, id * 10 + 3);
-		printf("$1");
-		MOVE_CURSOR(10, id * 10 + 4);
-		printf("42/406 Litres");
-		MOVE_CURSOR(10, id * 10 + 5);
-		printf("$401");
-		ConsoleMutex.Signal();
+	//// probably want to set the rendezvous here
 
-		// For reassurance
-		//printf("Reading from Pump %d as Consumer\n", id);
-		//printTransaction(&trans);
+	//// Console Mutex for GSC
+	//CSemaphore ConsoleMutex("ConsoleMutex", 1);
 
-		// Now we are the producer - The pump can start dispensing gas once
-		// the flag trans.ready is set to true and sent back to the datapool
-		// Only setting trans.ready to true to signal to pump that its ready for use
-		CS1.Wait();
-		trans.ready = true;
-		WritePumpStatus(transDP, &trans);
-		PS1.Signal();
+	//// why a for loop??? Is it just the number of customers we want?
+	//for (int i = 0; i < 2; i++)
+	//{
+	//	// We are the consumer - read the data stored in the data pool and
+	//	PS1.Wait();
+	//	Transaction trans;
+	//	ReadPumpStatus(transDP, &trans);
+	//	CS1.Signal();
 
-		// For reassurance
-		//printf("Writing to Pump %d as Producer\n", id);
-		//printTransaction(&trans);
-	}
+	//	ConsoleMutex.Wait();
+	//	MOVE_CURSOR(10, id * 10 + 1);
+	//	printf("%s %s", trans.firstName, trans.lastName);
+	//	MOVE_CURSOR(10, id * 10 + 2);
+	//	printf("OCTANE 4 Million");
+	//	MOVE_CURSOR(10, id * 10 + 3);
+	//	printf("$1");
+	//	MOVE_CURSOR(10, id * 10 + 4);
+	//	printf("42/406 Litres");
+	//	MOVE_CURSOR(10, id * 10 + 5);
+	//	printf("$401");
+	//	ConsoleMutex.Signal();
 
-	pump.WaitForThread();
+	//	// For reassurance
+	//	//printf("Reading from Pump %d as Consumer\n", id);
+	//	//printTransaction(&trans);
+
+	//	// Now we are the producer - The pump can start dispensing gas once
+	//	// the flag trans.ready is set to true and sent back to the datapool
+	//	// Only setting trans.ready to true to signal to pump that its ready for use
+	//	CS1.Wait();
+	//	trans.ready = true;
+	//	WritePumpStatus(transDP, &trans);
+	//	PS1.Signal();
+
+	//	// For reassurance
+	//	//printf("Writing to Pump %d as Producer\n", id);
+	//	//printTransaction(&trans);
+	//}
+
+	//pump.WaitForThread();
 
 	return 0;
 }

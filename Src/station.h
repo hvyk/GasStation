@@ -3,6 +3,7 @@
 
 #include <string>
 #include <time.h>
+#include "rt\rt.h"
 
 /*
  * This header file contains all the data structure to be used
@@ -13,6 +14,8 @@
 
 #define NUM_PUMPS	4
 
+// This is a problem
+CRendezvous Initialize("InitRendezvous", NUM_PUMPS + 1 );
 
 /***********************************************************
  *						Customers

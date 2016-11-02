@@ -60,6 +60,7 @@ Pump::~Pump()
 void Pump::WriteStatus(Transaction *trans)
 {
 	transDP->ready = trans->ready;
+	transDP->pumping = trans->pumping;
 	transDP->firstName = trans->firstName;
 	transDP->lastName = trans->lastName;
 	transDP->ccNum = trans->ccNum;
@@ -75,6 +76,7 @@ void Pump::WriteStatus(Transaction *trans)
 void Pump::ReadStatus(Transaction *trans)
 {
 	trans->ready = transDP->ready;
+	trans->pumping = transDP->pumping;
 	trans->firstName = transDP->firstName;
 	trans->lastName = transDP->lastName;
 	trans->ccNum = transDP->ccNum;

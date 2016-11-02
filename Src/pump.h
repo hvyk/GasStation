@@ -42,34 +42,37 @@ public:
 
 	int main(void)
 	{
-		std::string dpName = "PumpStatusDP" + std::to_string(id);
-		CDataPool *pumpDP = new CDataPool(dpName, sizeof(Transaction));
-		transDP = (struct Transaction *)(pumpDP->LinkDataPool());
+		// Add rendezvous event here
 
-		for (int i = 0; i < 4; i++)
-		{
-			// probably want to set the rendezvous here
 
-			// Simulate a simplified customer transaction	
-			Transaction trans = generateTransaction();
+		//std::string dpName = "PumpStatusDP" + std::to_string(id);
+		//CDataPool *pumpDP = new CDataPool(dpName, sizeof(Transaction));
+		//transDP = (struct Transaction *)(pumpDP->LinkDataPool());
 
-			// We are the producer - want to send status info to GSC
-			CS1->Wait();
-			WriteStatus(&trans);
-			//printTransaction(&trans, id, true);
-			PS1->Signal();
+		//for (int i = 0; i < 4; i++)
+		//{
+		//	// probably want to set the rendezvous here
 
-			// Now we are the consumer - waiting for GSC's go-ahead on when
-			// to start the pump
-			PS1->Wait();
-			ReadStatus(&trans);
-			//printTransaction(&trans, id, false);
-			CS1->Signal();
-			
-			// Now ready to pump the gas - not working
-			pump(trans.type, trans.quantity);
-			
-		}
+		//	// Simulate a simplified customer transaction	
+		//	Transaction trans = generateTransaction();
+
+		//	// We are the producer - want to send status info to GSC
+		//	CS1->Wait();
+		//	WriteStatus(&trans);
+		//	//printTransaction(&trans, id, true);
+		//	PS1->Signal();
+
+		//	// Now we are the consumer - waiting for GSC's go-ahead on when
+		//	// to start the pump
+		//	PS1->Wait();
+		//	ReadStatus(&trans);
+		//	//printTransaction(&trans, id, false);
+		//	CS1->Signal();
+		//	
+		//	// Now ready to pump the gas - not working
+		//	pump(trans.type, trans.quantity);
+		//	
+		//}
 
 		return 0;
 	}
