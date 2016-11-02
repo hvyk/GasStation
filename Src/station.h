@@ -15,7 +15,6 @@
 #define NUM_PUMPS	4
 
 // This is a problem
-CRendezvous Initialize("InitRendezvous", NUM_PUMPS + 1 );
 
 /***********************************************************
  *						Customers
