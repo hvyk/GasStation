@@ -29,6 +29,7 @@
 // Constants for the fuel type
 #define NUM_FUELTYPES	4
 enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
+//char* FuelTypeNamesArray[NUM_FUELTYPES] = { "Octane 87", "Octane 89", "Octane 91", "Octane 94" };
 
 // Capacity of the fuel tank
 #define MAX_CAPACITY 500
@@ -51,6 +52,7 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 struct Transaction
 {
 	bool ready;
+	bool pumping;
 	std::string firstName;
 	std::string lastName;
 	std::string ccNum;

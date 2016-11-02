@@ -1,3 +1,6 @@
+#ifndef __PUMP_H__
+#define __PUMP_H__
+
 #include <string>
 #include "rt/rt.h"
 #include "station.h"
@@ -45,20 +48,22 @@ public:
 
 		for (int i = 0; i < 4; i++)
 		{
+			// probably want to set the rendezvous here
+
 			// Simulate a simplified customer transaction	
 			Transaction trans = generateTransaction();
 
 			// We are the producer - want to send status info to GSC
 			CS1->Wait();
 			WriteStatus(&trans);
-			printTransaction(&trans, id, true);
+			//printTransaction(&trans, id, true);
 			PS1->Signal();
 
 			// Now we are the consumer - waiting for GSC's go-ahead on when
 			// to start the pump
 			PS1->Wait();
 			ReadStatus(&trans);
-			printTransaction(&trans, id, false);
+			//printTransaction(&trans, id, false);
 			CS1->Signal();
 			
 			// Now ready to pump the gas - not working
@@ -70,3 +75,6 @@ public:
 	}
 
 };
+
+
+#endif // __PUMP_H__

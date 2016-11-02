@@ -1,4 +1,5 @@
 #include "rt/rt.h"
+#include "station.h"
 #include "customer.h"
 #include "pump.h"
 #include "tank.h"
@@ -30,119 +31,66 @@ UINT __stdcall pumpThread(void *args);
 // This is the gas station computer
 int main(int argc, char* argv[])
 {
-
-	HANDLE  hConsole = GetStdHandle(STD_OUTPUT_HANDLE);;
-
-	// Set four numbers on the screen for the tank values
-	for (int i = 50; i > 0; i--)
+	// Create the fuel tanks
+	vector<FuelTank *> fuelTanks;
+	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
 	{
-		MOVE_CURSOR(10, 10);
-		// Decrement
-		for (int ii = 50; ii > 0; ii--)
-		{
-			if (ii > 15)
-				SetConsoleTextAttribute(hConsole, GREEN);
-			else
-				SetConsoleTextAttribute(hConsole, RED);
-
-			if (ii > i)
-			{
-				cout << (char)254u;
-			}
-			else
-			{
-				printf(" ");
-			}
-		}
-
-		MOVE_CURSOR(10, 20);
-		// Increment
-		for (int ii = 0; ii < 50; ii++)
-		{
-			if (ii > 15)
-				SetConsoleTextAttribute(hConsole, GREEN);
-			else
-				SetConsoleTextAttribute(hConsole, RED);
-
-			if (ii < i)
-			{
-				cout << (char)254u;
-			}
-			else
-			{
-				printf(" ");
-			}
-		}
-
-		MOVE_CURSOR(10, 30);
-		for (int ii = 50; ii > 0; ii--)
-		{
-			if (ii > 15)
-				SetConsoleTextAttribute(hConsole, GREEN);
-			else
-				SetConsoleTextAttribute(hConsole, RED);
-			//printf("|");
-			cout << (char)254u;
-		}
-
-		MOVE_CURSOR(10, 40);
-		for (int ii = 50; ii > 0; ii--)
-		{
-			if (ii > 15)
-				SetConsoleTextAttribute(hConsole, GREEN);
-			else
-				SetConsoleTextAttribute(hConsole, RED);
-			//printf("|");
-			cout << (char)254u;
-		}
-		SLEEP(50);
+		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+		fuelTanks.push_back(tank_i);
 	}
 
-	printf("\n\n");
-
-
-
-	//vector<FuelTank *> fuelTanks;
-	//// Create the fuel tank
-	//for (int octane = OCTANE87; octane <= OCTANE94; octane++)
-	//{
-	//	FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
-	//	fuelTanks.push_back(tank_i);
-	//}
-
-	//vector<CThread *> threads;
+	vector<CThread *> threads;
 	//printf("Creating %d threads\n", NUM_PUMPS);
 
-	//// Create NUM_PUMPS pumps
-	//for (int i = 0; i < NUM_PUMPS; i++)
-	//{
-	//	CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
-	//	threads.push_back( thread_i );
-	//	Sleep(100);
-	//}
+	// Create NUM_PUMPS pumps
+	for (int i = 0; i < NUM_PUMPS; i++)
+	{
+		CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
+		threads.push_back( thread_i );
+		Sleep(100);
+	}
 
-	//printf("Done generating the threads, let them work\n");
-	//getchar();
+	printf("Done generating the threads, let them work\n");
+	getchar();
 
-	//// Application starts here
+	// Mutex for protecting the console window
+	CSemaphore ConsoleMutex("ConsoleMutex", 1);
+
+	// Application starts here
 	//printf("Starting application\n");
-	//while (1)
-	//{
-	//	printf("%1.1f\n", fuelTanks[0]->getRemaining());
-	//	printf("%1.1f\n", fuelTanks[1]->getRemaining());
-	//	printf("%1.1f\n", fuelTanks[1]->getRemaining());
-	//	printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
-	//	Sleep(1000);
-	//}
-	//// Application ends here
+	while (1)
+	{
+		ConsoleMutex.Wait();
+		MOVE_CURSOR(10, 10);
+		printf("%1.1f\n", fuelTanks[0]->getRemaining());
+		ConsoleMutex.Signal();
 
-	//for (int i = 0; i < NUM_PUMPS; i++)
-	//{
-	//	delete threads[i];
-	//}
+		ConsoleMutex.Wait();
+		MOVE_CURSOR(10, 20);
+		printf("%1.1f\n", fuelTanks[1]->getRemaining());
+		ConsoleMutex.Signal();
 
-	//printf("Done\n");
-	//getchar();
+		ConsoleMutex.Wait();
+		MOVE_CURSOR(10, 30);
+		printf("%1.1f\n", fuelTanks[1]->getRemaining());
+		ConsoleMutex.Signal();
+
+		ConsoleMutex.Wait();
+		MOVE_CURSOR(10, 40);
+		printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
+		ConsoleMutex.Signal();
+
+		Sleep(1000);
+	}
+	// Application ends here
+
+	for (int i = 0; i < NUM_PUMPS; i++)
+	{
+		delete threads[i];
+	}
+
+	printf("Done\n");
+	getchar();
 	return 0;
 }
 
@@ -168,37 +116,58 @@ UINT __stdcall pumpThread(void *args)
 	std::string producerName = "Producer" + std::to_string(id);
 	std::string consumerName = "Consumer" + std::to_string(id);
 
-	CSemaphore *PS1 = new CSemaphore(producerName, 0, 1);
-	CSemaphore *CS1 = new CSemaphore(consumerName, 1, 1);
+	// These shouldn't have to be pointers
+	//CSemaphore *PS1 = new CSemaphore(producerName, 0, 1);
+	//CSemaphore *CS1 = new CSemaphore(consumerName, 1, 1);
+	CSemaphore PS1(producerName, 0, 1);
+	CSemaphore CS1(consumerName, 1, 1);
 
 	// Spawn a pump active object
 	Pump pump(id);
 	pump.Resume();
 
+	// probably want to set the rendezvous here
+
+	// Console Mutex for GSC
+	CSemaphore ConsoleMutex("ConsoleMutex", 1);
+
+	// why a for loop??? Is it just the number of customers we want?
 	for (int i = 0; i < 2; i++)
 	{
-
 		// We are the consumer - read the data stored in the data pool and
-		PS1->Wait();
+		PS1.Wait();
 		Transaction trans;
 		ReadPumpStatus(transDP, &trans);
-		CS1->Signal();
+		CS1.Signal();
+
+		ConsoleMutex.Wait();
+		MOVE_CURSOR(10, id * 10 + 1);
+		printf("%s %s", trans.firstName, trans.lastName);
+		MOVE_CURSOR(10, id * 10 + 2);
+		printf("OCTANE 4 Million");
+		MOVE_CURSOR(10, id * 10 + 3);
+		printf("$1");
+		MOVE_CURSOR(10, id * 10 + 4);
+		printf("42/406 Litres");
+		MOVE_CURSOR(10, id * 10 + 5);
+		printf("$401");
+		ConsoleMutex.Signal();
 
 		// For reassurance
-		printf("Reading from Pump %d as Consumer\n", id);
-		printTransaction(&trans);
+		//printf("Reading from Pump %d as Consumer\n", id);
+		//printTransaction(&trans);
 
 		// Now we are the producer - The pump can start dispensing gas once
 		// the flag trans.ready is set to true and sent back to the datapool
 		// Only setting trans.ready to true to signal to pump that its ready for use
-		CS1->Wait();
+		CS1.Wait();
 		trans.ready = true;
 		WritePumpStatus(transDP, &trans);
-		PS1->Signal();
+		PS1.Signal();
 
 		// For reassurance
-		printf("Writing to Pump %d as Producer\n", id);
-		printTransaction(&trans);
+		//printf("Writing to Pump %d as Producer\n", id);
+		//printTransaction(&trans);
 	}
 
 	pump.WaitForThread();
@@ -210,6 +179,7 @@ UINT __stdcall pumpThread(void *args)
 void WritePumpStatus(struct Transaction *transDP, Transaction *trans)
 {
 	transDP->ready = trans->ready;
+	transDP->pumping = trans->pumping;
 	transDP->firstName = trans->firstName;
 	transDP->lastName = trans->lastName;
 	transDP->ccNum = trans->ccNum;
@@ -222,6 +192,7 @@ void WritePumpStatus(struct Transaction *transDP, Transaction *trans)
 void ReadPumpStatus(struct Transaction *transDP, Transaction *trans)
 {
 	trans->ready = transDP->ready;
+	trans->pumping = transDP->pumping;
 	trans->firstName = transDP->firstName;
 	trans->lastName = transDP->lastName;
 	trans->ccNum = transDP->ccNum;
@@ -251,9 +222,9 @@ void printTransaction(Transaction *trans)
 
 	std::string transTime = ctime(&(trans->time));
 
-	//printf("\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n\t%1.1f",
-	//	trans->firstName, trans->lastName, trans->ccNum,
-	//	time, fType, trans->quantity);
+	printf("\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n\t%1.1f",
+		trans->firstName, trans->lastName, trans->ccNum,
+		time, fType, trans->quantity);
 	printf("\t%s\n", trans->firstName);
 	printf("\t%s\n", trans->lastName);
 	printf("\t%s\n", trans->ccNum);

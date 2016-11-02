@@ -95,7 +95,7 @@ Transaction Pump::generateTransaction()
 	FuelType	type = FuelType(std::rand() % 4);
 	float		quantity = (float)(std::rand() % 130) / 2;
 
-	Transaction trans = { false, firstName, lastName, ccNum, now, type, quantity };
+	Transaction trans = { false, false, firstName, lastName, ccNum, now, type, quantity };
 	return trans;
 }
 
@@ -152,18 +152,18 @@ void Pump::printTransaction(Transaction *trans, int id, bool producing)
 // Also need to pass real time information to the real-time monitoring window
 int Pump::pump(FuelType type, float quantity)
 {
-	printf("\n\tStarting to pump\n");
+	//printf("\n\tStarting to pump\n");
 	if (fuelTanks[type]->getRemaining() < quantity)
 	{
 		// Don't have enough gas to pump - should we wait until it's full?
-		printf("\t\tno fuel remaining in tank\n");
+		//printf("\t\tno fuel remaining in tank\n");
 		return -1;
 	}
 	while (quantity > 0)
 	{
 		fuelTanks[type]->decrement();
 		quantity -= 0.5;
-		printf("decrementing pump id %d to %1.1f >>> %1.1f\n", id, quantity, fuelTanks[type]->getRemaining());
+		//printf("decrementing pump id %d to %1.1f >>> %1.1f\n", id, quantity, fuelTanks[type]->getRemaining());
 		Sleep(50);
 	}
 	return 0;
