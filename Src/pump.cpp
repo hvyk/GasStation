@@ -6,12 +6,12 @@
 // Baaad, don't use this constructor for more than one pump
 Pump::Pump()
 {
-	//CDataPool pumpDP("PumpDP", sizeof(Transaction));
+	//CDataPool pumpDP("PumpStatusDP", sizeof(Transaction));
 	//transDP = (struct Transaction *)(pumpDP.LinkDataPool());
 	id = 0;
 
-	PS1 = new CSemaphore("Producer0", 0, 1);
-	CS1 = new CSemaphore("Consumer0", 1, 1);
+	PS1 = new CSemaphore("StatusProducer0", 0, 1);
+	CS1 = new CSemaphore("StatusConsumer0", 1, 1);
 
 
 	// Need access to the fuel tank data pools
@@ -20,6 +20,8 @@ Pump::Pump()
 		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
 		fuelTanks.push_back(tank_i);
 	}
+
+	int i = 0;
 }
 
 
@@ -29,8 +31,8 @@ Pump::Pump(int id)
 	//transDP = (struct Transaction *)(pumpDP.LinkDataPool());
 	this->id = id;
 
-	std::string producerName = "Producer" + this->id;
-	std::string consumerName = "Consumer" + this->id;
+	std::string producerName = "StatusProducer" + this->id;
+	std::string consumerName = "StatusConsumer" + this->id;
 
 	PS1 = new CSemaphore(producerName, 0, 1);
 	CS1 = new CSemaphore(consumerName, 1, 1);
@@ -52,7 +54,10 @@ Pump::~Pump()
 }
 
 
-void Pump::Produce(Transaction *trans)
+//void Pump::Produce(Transaction *trans)
+
+// Write data to be stored in the 'Status' datapool
+void Pump::WriteStatus(Transaction *trans)
 {
 	transDP->ready = trans->ready;
 	transDP->firstName = trans->firstName;
@@ -64,7 +69,10 @@ void Pump::Produce(Transaction *trans)
 }
 
 
-void Pump::Consume(Transaction *trans)
+//void Pump::Consume(Transaction *trans)
+
+// read the data stored in the 'Status' datapool
+void Pump::ReadStatus(Transaction *trans)
 {
 	trans->ready = transDP->ready;
 	trans->firstName = transDP->firstName;
@@ -75,6 +83,9 @@ void Pump::Consume(Transaction *trans)
 	trans->quantity = transDP->quantity;
 }
 
+
+// Generate the information required for a transaction - all
+// of which is dummy sample data
 Transaction Pump::generateTransaction()
 {
 	std::string firstName = "Bobby";
@@ -89,6 +100,8 @@ Transaction Pump::generateTransaction()
 }
 
 
+// Generates a credit card for a purchase
+// will inevitably be moved to the Customer class when created
 std::string Pump::generateCC()
 {
 	std::string tmp;
@@ -104,6 +117,7 @@ std::string Pump::generateCC()
 }
 
 
+// Prints the details of a transaction, which is generated randomly
 void Pump::printTransaction(Transaction *trans, int id, bool producing)
 {
 	char *fType = "OCTANE 87";
@@ -136,17 +150,21 @@ void Pump::printTransaction(Transaction *trans, int id, bool producing)
 
 // Needs to pass information to the FuelTanks to reduce their ammount
 // Also need to pass real time information to the real-time monitoring window
-int Pump::dispense(FuelType type, float quantity)
+int Pump::pump(FuelType type, float quantity)
 {
+	printf("\n\tStarting to pump\n");
 	if (fuelTanks[type]->getRemaining() < quantity)
 	{
+		// Don't have enough gas to pump - should we wait until it's full?
+		printf("\t\tno fuel remaining in tank\n");
 		return -1;
 	}
 	while (quantity > 0)
 	{
 		fuelTanks[type]->decrement();
 		quantity -= 0.5;
-		Sleep(1000);
+		printf("decrementing pump id %d to %1.1f >>> %1.1f\n", id, quantity, fuelTanks[type]->getRemaining());
+		Sleep(50);
 	}
 	return 0;
 }

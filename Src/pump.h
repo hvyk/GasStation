@@ -17,9 +17,11 @@ private:
 	CSemaphore *CS1;
 
 	// Sends the data stored in trans to the datapool given by transDP
-	void Produce(Transaction *trans);
+	//void Produce(Transaction *trans);
+	void WriteStatus(Transaction *trans);
 	// Receives the data stored in trans to the datapool given by transDP
-	void Consume(Transaction *trans);
+	//void Consume(Transaction *trans);
+	void ReadStatus(Transaction *trans);
 
 	// Dummy code for testing until a Customer class is created
 	Transaction generateTransaction();
@@ -33,11 +35,11 @@ public:
 	Pump(int id);
 	~Pump();
 
-	int dispense(FuelType type, float quantity);
+	int pump(FuelType type, float quantity);
 
 	int main(void)
 	{
-		std::string dpName = "PumpDP" + std::to_string(id);
+		std::string dpName = "PumpStatusDP" + std::to_string(id);
 		CDataPool *pumpDP = new CDataPool(dpName, sizeof(Transaction));
 		transDP = (struct Transaction *)(pumpDP->LinkDataPool());
 
@@ -48,19 +50,19 @@ public:
 
 			// We are the producer - want to send status info to GSC
 			CS1->Wait();
-			Produce(&trans);
+			WriteStatus(&trans);
 			printTransaction(&trans, id, true);
 			PS1->Signal();
 
 			// Now we are the consumer - waiting for GSC's go-ahead on when
 			// to start the pump
 			PS1->Wait();
-			Consume(&trans);
+			ReadStatus(&trans);
 			printTransaction(&trans, id, false);
 			CS1->Signal();
 			
 			// Now ready to pump the gas - not working
-			dispense(trans.type, trans.quantity);
+			pump(trans.type, trans.quantity);
 			
 		}
 

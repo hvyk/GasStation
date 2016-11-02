@@ -3,11 +3,17 @@
 #include "pump.h"
 #include "tank.h"
 
+#define RED     12
+#define GREEN   10
 
-// Sends the data stored in trans to the datapool given by transDP
-void Produce(struct Transaction *transDP, Transaction *trans);
+// Sends the data stored in trans to the 'datapool given by transDP
+//void Produce(struct Transaction *transDP, Transaction *trans);
+// Producer
+void WritePumpStatus(struct Transaction *transDP, Transaction *trans);
 // Receives the data stored in trans to the datapool given by transDP
-void Consume(struct Transaction *transDP, Transaction *trans);
+//void Consume(struct Transaction *transDP, Transaction *trans);
+// Consume
+void ReadPumpStatus(struct Transaction *transDP, Transaction *trans);
 
 // Test function to verify the transactions are right
 void printTransaction(Transaction *trans);
@@ -24,47 +30,119 @@ UINT __stdcall pumpThread(void *args);
 // This is the gas station computer
 int main(int argc, char* argv[])
 {
-	vector<FuelTank *> fuelTanks;
-	// Create the fuel tank
-	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+
+	HANDLE  hConsole = GetStdHandle(STD_OUTPUT_HANDLE);;
+
+	// Set four numbers on the screen for the tank values
+	for (int i = 50; i > 0; i--)
 	{
-		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
-		fuelTanks.push_back(tank_i);
+		MOVE_CURSOR(10, 10);
+		// Decrement
+		for (int ii = 50; ii > 0; ii--)
+		{
+			if (ii > 15)
+				SetConsoleTextAttribute(hConsole, GREEN);
+			else
+				SetConsoleTextAttribute(hConsole, RED);
+
+			if (ii > i)
+			{
+				cout << (char)254u;
+			}
+			else
+			{
+				printf(" ");
+			}
+		}
+
+		MOVE_CURSOR(10, 20);
+		// Increment
+		for (int ii = 0; ii < 50; ii++)
+		{
+			if (ii > 15)
+				SetConsoleTextAttribute(hConsole, GREEN);
+			else
+				SetConsoleTextAttribute(hConsole, RED);
+
+			if (ii < i)
+			{
+				cout << (char)254u;
+			}
+			else
+			{
+				printf(" ");
+			}
+		}
+
+		MOVE_CURSOR(10, 30);
+		for (int ii = 50; ii > 0; ii--)
+		{
+			if (ii > 15)
+				SetConsoleTextAttribute(hConsole, GREEN);
+			else
+				SetConsoleTextAttribute(hConsole, RED);
+			//printf("|");
+			cout << (char)254u;
+		}
+
+		MOVE_CURSOR(10, 40);
+		for (int ii = 50; ii > 0; ii--)
+		{
+			if (ii > 15)
+				SetConsoleTextAttribute(hConsole, GREEN);
+			else
+				SetConsoleTextAttribute(hConsole, RED);
+			//printf("|");
+			cout << (char)254u;
+		}
+		SLEEP(50);
 	}
 
-	vector<CThread *> threads;
-	printf("Creating %d threads\n", NUM_PUMPS);
+	printf("\n\n");
 
-	// Create NUM_PUMPS pumps
-	for (int i = 0; i < NUM_PUMPS; i++)
-	{
-		CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
-		threads.push_back( thread_i );
-		Sleep(100);
-	}
 
-	printf("Done generating the threads, let them work\n");
-	getchar();
 
-	// Application starts here
-	printf("Starting application\n");
-	while (1)
-	{
-		printf("%1.1f\n", fuelTanks[0]->getRemaining());
-		printf("%1.1f\n", fuelTanks[1]->getRemaining());
-		printf("%1.1f\n", fuelTanks[1]->getRemaining());
-		printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
-		Sleep(1000);
-	}
-	// Application ends here
+	//vector<FuelTank *> fuelTanks;
+	//// Create the fuel tank
+	//for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	//{
+	//	FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+	//	fuelTanks.push_back(tank_i);
+	//}
 
-	for (int i = 0; i < NUM_PUMPS; i++)
-	{
-		delete threads[i];
-	}
+	//vector<CThread *> threads;
+	//printf("Creating %d threads\n", NUM_PUMPS);
 
-	printf("Done\n");
-	getchar();
+	//// Create NUM_PUMPS pumps
+	//for (int i = 0; i < NUM_PUMPS; i++)
+	//{
+	//	CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
+	//	threads.push_back( thread_i );
+	//	Sleep(100);
+	//}
+
+	//printf("Done generating the threads, let them work\n");
+	//getchar();
+
+	//// Application starts here
+	//printf("Starting application\n");
+	//while (1)
+	//{
+	//	printf("%1.1f\n", fuelTanks[0]->getRemaining());
+	//	printf("%1.1f\n", fuelTanks[1]->getRemaining());
+	//	printf("%1.1f\n", fuelTanks[1]->getRemaining());
+	//	printf("%1.1f\n\n", fuelTanks[1]->getRemaining());
+	//	Sleep(1000);
+	//}
+	//// Application ends here
+
+	//for (int i = 0; i < NUM_PUMPS; i++)
+	//{
+	//	delete threads[i];
+	//}
+
+	//printf("Done\n");
+	//getchar();
 	return 0;
 }
 
@@ -75,13 +153,11 @@ int main(int argc, char* argv[])
  *		A pointer to an integer with the thread number to be used to
  *		create the producer and consumer semaphores
  */
-
-
 UINT __stdcall pumpThread(void *args)
 {
 	// Create a name for the data pool given by the index
 	int id = *(int*)args;
-	std::string dpName = "PumpDP" + std::to_string(id);
+	std::string dpName = "PumpStatusDP" + std::to_string(id);
 	
 	// Create the datapool 
 	CDataPool pumpDP(dpName, sizeof(Transaction));
@@ -105,7 +181,7 @@ UINT __stdcall pumpThread(void *args)
 		// We are the consumer - read the data stored in the data pool and
 		PS1->Wait();
 		Transaction trans;
-		Consume(transDP, &trans);
+		ReadPumpStatus(transDP, &trans);
 		CS1->Signal();
 
 		// For reassurance
@@ -117,7 +193,7 @@ UINT __stdcall pumpThread(void *args)
 		// Only setting trans.ready to true to signal to pump that its ready for use
 		CS1->Wait();
 		trans.ready = true;
-		Produce(transDP, &trans);
+		WritePumpStatus(transDP, &trans);
 		PS1->Signal();
 
 		// For reassurance
@@ -131,7 +207,7 @@ UINT __stdcall pumpThread(void *args)
 }
 
 
-void Produce(struct Transaction *transDP, Transaction *trans)
+void WritePumpStatus(struct Transaction *transDP, Transaction *trans)
 {
 	transDP->ready = trans->ready;
 	transDP->firstName = trans->firstName;
@@ -143,7 +219,7 @@ void Produce(struct Transaction *transDP, Transaction *trans)
 }
 
 
-void Consume(struct Transaction *transDP, Transaction *trans)
+void ReadPumpStatus(struct Transaction *transDP, Transaction *trans)
 {
 	trans->ready = transDP->ready;
 	trans->firstName = transDP->firstName;

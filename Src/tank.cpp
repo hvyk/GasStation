@@ -3,6 +3,7 @@
 
 FuelTank::FuelTank()
 {
+	printf("FuelTank default constructor\n");
 	mRemain = new CMutex("remaining", 1);
 
 	theDataPool = new CDataPool(string("OCTANE") + to_string(0), sizeof(struct Tank));
@@ -16,6 +17,7 @@ FuelTank::FuelTank()
 
 FuelTank::FuelTank(FuelType type, float remaining)
 {
+	printf("FuelTank constructor %d %1.1f\n", type, remaining);
 	mRemain = new CMutex("remaining", 1);
 
 	theDataPool = new CDataPool(string("OCTANE") + to_string(type), sizeof(struct Tank));
@@ -70,7 +72,7 @@ float FuelTank::getRemaining()
 	retVal = tank->remaining;
 	mRemain->Signal();
 
-	printf(">>> remaining = %1.1f\n", retVal);
+	//printf(">>> remaining = %1.1f\n", retVal);
 	return retVal;
 }
 
