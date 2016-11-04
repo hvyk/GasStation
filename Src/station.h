@@ -49,7 +49,14 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 //	float quantity;
 //};
 
-
+struct custInfo
+{
+	std::string firstName;
+	std::string lastName;
+	std::string ccNum;
+	FuelType type;
+	float quantity;
+};
 
 struct Transaction
 {

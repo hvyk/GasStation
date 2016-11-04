@@ -1,4 +1,6 @@
 #include <vector>
+#include <iostream>
+#include <fstream>
 #include "rt/rt.h"
 #include "station.h"
 //#include "customer.h"
@@ -8,17 +10,183 @@
 #define RED     12
 #define GREEN   10
 
-const int numRendezvous = NUM_PUMPS * 2 + 1;
+//#define FIRSTNAMES "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\firstnames.txt"
+//#define LASTNAMES "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\lastnames.txt"
+
+const std::string FIRSTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\firstnames.txt";
+const std::string LASTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\lastnames.txt";
+
+const int numRendezvous = NUM_PUMPS * 2 + 2;
 //const int numRendezvous = NUM_PUMPS * 2;
 
 CRendezvous Initialize("InitRendezvous", numRendezvous );
 CSemaphore ConsoleMutex("ConsoleMutex", 1);
 
 
+
+// rand is thread local, so let's change this up
+unsigned long mix(unsigned long a, unsigned long b, unsigned long c)
+{
+	a = a - b;  a = a - c;  a = a ^ (c >> 13);
+	b = b - c;  b = b - a;  b = b ^ (a << 8);
+	c = c - a;  c = c - b;  c = c ^ (b >> 13);
+	a = a - b;  a = a - c;  a = a ^ (c >> 12);
+	b = b - c;  b = b - a;  b = b ^ (a << 16);
+	c = c - a;  c = c - b;  c = c ^ (b >> 5);
+	a = a - b;  a = a - c;  a = a ^ (c >> 3);
+	b = b - c;  b = b - a;  b = b ^ (a << 10);
+	c = c - a;  c = c - b;  c = c ^ (b >> 15);
+	return c;
+}
+
+
 /*=================================================
  *					Customer
  *================================================*/
+class Customer : public ActiveClass
+{
+private:
+	// The id of the pump for semaphore management
+	int id;
 
+	std::string firstName;
+	std::string lastName;
+	std::string ccNum;
+	FuelType type;
+	float quantity;
+
+	time_t transTime;
+
+	CSemaphore *customerData;
+	CPipe *customerPipeline;
+
+	// Creates a name and sets the member variables
+	std::string readName(std::string filename);
+	std::string generateFirstName();
+	std::string generateLastName();
+	// Creates a credit card number and sets the member variable
+	std::string generateCC();
+
+	//struct custInfo generateCustomer();
+
+public:
+	Customer();
+	Customer(int id);
+	~Customer();
+
+	int main(void)
+	{
+		// see the rand that uses more than just time (because rand() is thread local)
+		unsigned long seed = mix(clock(), time(NULL), _getpid());
+		srand(seed);
+
+		// Generate a Customer using 'struct custInfo'
+		this->firstName = generateFirstName();
+		this->lastName = generateLastName();
+		this->ccNum = generateCC();
+		this->type = FuelType(std::rand() % 4);
+		this->quantity = (float)(std::rand() % 110) / 2 + 10;
+
+		struct custInfo cust = {
+			firstName,
+			lastName,
+			ccNum,
+			type,
+			quantity
+		};
+
+		// Write to pipeline
+		customerData->Wait();
+		customerPipeline->Write(&cust, sizeof(cust));
+		customerData->Signal();
+
+		return 0;
+	}
+};
+
+Customer::Customer()
+{
+	this->id = 0;
+	customerData = new CSemaphore("customerData0", 1);
+	customerPipeline = new CPipe("customerPipeline0");
+}
+
+Customer::Customer(int id)
+{
+	this->id = id;
+	std::string customerDataName = "customerData" + std::to_string(id);
+	std::string customerPipelineName = "customerPipeline" + std::to_string(id);
+	customerData = new CSemaphore(customerDataName, 1);
+	customerPipeline = new CPipe(customerPipelineName);
+}
+
+
+Customer::~Customer()
+{
+	delete customerData;
+	delete customerPipeline;
+}
+
+std::string Customer::readName(std::string filename)
+{
+	ifstream infile(filename);
+	if (infile)
+	{
+		std::string line;
+		std::vector<std::string> lines;
+
+		while (getline(infile, line)) {
+			lines.push_back(line);
+		}
+
+		int len = lines.size();
+		int idx = rand() % len;
+
+		//printf("readName creating name %s from filename %s",
+		//	lines[idx], filename.c_str());
+		return lines[idx];
+	}
+	return "";
+}
+
+
+std::string Customer::generateFirstName()
+{
+	// read random line from firstnames.txt
+	//std::string filename = "..\\Src\\names\\firstname.txt";
+	std::string filename = FIRSTNAMES;
+	return readName(filename);
+}
+
+
+std::string Customer::generateLastName()
+{
+	// read random line from lastnames.txt
+	//std::string filename = "..\\Src\\names\\lastname.txt";
+	std::string filename = LASTNAMES;
+	return readName(filename);
+}
+
+//struct custInfo Customer::generateCustomer()
+//{
+//	return 
+//}
+
+// Generates a credit card for a purchase
+// will inevitably be moved to the Customer class when created
+std::string Customer::generateCC()
+{
+	std::string tmp;
+	int num;
+	for (int i = 0; i < CC_LENGTH; i++)
+	{
+		num = rand() % 9;
+		if ( i > 0 && i % 4 == 0)
+			tmp += " ";
+		tmp += std::to_string(num);
+	}
+	return tmp;
+}
 
 
 /*=================================================
@@ -152,6 +320,9 @@ private:
 	CSemaphore *PS1;
 	CSemaphore *CS1;
 
+	CPipe *customerPipeline;
+	CSemaphore *customerData;
+
 	// Sends the data stored in trans to the datapool given by transDP
 	//void Produce(Transaction *trans);
 	void WriteStatus(Transaction *trans);
@@ -175,7 +346,15 @@ public:
 
 	int main(void)
 	{
-		// Initialize everything necessary for this thread
+		// Add access to the fuel tanks
+		vector<FuelTank *> fuelTanks;
+		for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+		{
+			FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+			fuelTanks.push_back(tank_i);
+		}
+
+		// Create the status datapool
 		std::string dpName = "PumpStatusDP" + std::to_string(id);
 		CDataPool *pumpDP = new CDataPool(dpName, sizeof(Transaction));
 		transDP = (struct Transaction *)(pumpDP->LinkDataPool());
@@ -184,6 +363,23 @@ public:
 		printf("PumpMain %d waiting for rendezvous\n", id);
 		Initialize.Wait();
 		printf("Pump %d done waiting from rendezvous\n", id);
+
+		// Generating customers
+		Customer *theCustomers[100];
+		for (int i = 0; i < 100; i++)
+		{
+			theCustomers[i] = new Customer(id);
+			theCustomers[i]->Resume();
+		}
+
+		struct custInfo cust;
+		
+		customerPipeline = new CPipe("customerPipeline0");
+		customerData->Signal();
+		customerPipeline->Read(&cust, sizeof(cust));
+		
+
+
 
 		return 0;
 	}
@@ -198,6 +394,9 @@ Pump::Pump()
 
 	PS1 = new CSemaphore("StatusProducer0", 0, 1);
 	CS1 = new CSemaphore("StatusConsumer0", 1, 1);
+
+	customerPipeline = new CPipe("customerPipeline0");
+	customerData = new CSemaphore("customerData0", 1, 0);
 
 	// Need access to the fuel tank data pools
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
@@ -214,11 +413,16 @@ Pump::Pump(int id)
 {
 	this->id = id;
 
-	std::string producerName = "StatusProducer" + this->id;
-	std::string consumerName = "StatusConsumer" + this->id;
+	std::string producerName = "StatusProducer" + std::to_string(this->id);
+	std::string consumerName = "StatusConsumer" + std::to_string(this->id);
+	std::string customerDataName = "customerData" + std::to_string(this->id);
+	std::string customerPipelineName = "customerPipeline" + std::to_string(this->id);
 
 	PS1 = new CSemaphore(producerName, 0, 1);
 	CS1 = new CSemaphore(consumerName, 1, 1);
+
+	customerPipeline = new CPipe(customerPipelineName);
+	customerData = new CSemaphore(customerDataName, 1, 0);
 
 	// Need access to the fuel tank data pools
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
@@ -233,6 +437,7 @@ Pump::~Pump()
 {
 	delete PS1;
 	delete CS1;
+	delete customerData;
 }
 
 
@@ -363,26 +568,71 @@ int Pump::pump(FuelType type, float quantity)
 UINT __stdcall pumpThread(void *args);
 UINT __stdcall tankThread(void *args);
 
+std::string ExePath() {
+	char buffer[MAX_PATH];
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	string::size_type pos = string(buffer).find_last_of("\\/");
+	return string(buffer).substr(0, pos);
+}
 
 // This is the gas station computer
 int main(int argc, char* argv[])
 {
+	//srand(time(NULL));
+	//printf("{ ");
+	//for (int i = 0; i < 20; i++)
+	//{
+	//	printf("%d, ", rand() % 10);
+	//}
+	//printf("}\n\n");
+	//cout << "my directory is " << ExePath() << "\n";
 
-	vector<CThread *> threads;
-	vector<Pump *> pumps;
+	CSemaphore *customerData = new CSemaphore("customerData0", 1);
+	CPipe *customerPipeline = new CPipe("customerPipeline0");
 
-	// Create NUM_PUMPS pumps
-	for (int i = 0; i < NUM_PUMPS; i++)
+	struct custInfo cust;
+
+	Customer *theCustomers[10];
+	for (int i = 0; i < 10; i++)
 	{
-		CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
-		threads.push_back( thread_i );
+		theCustomers[i] = new Customer();
+		theCustomers[i]->Resume();
+		Sleep(200);
+	//}
 
-		Pump *pump_i = new Pump(i);
-		pump_i->Resume();
-		pumps.push_back( pump_i );
 
-		Sleep(100);
+	//for (int i = 0; i < 10; i++)
+	//{
+		// read from the pipeline
+		//customerData->Wait();
+		customerPipeline->Read(&cust, sizeof(cust));
+		//customerData->Signal();
+
+		printf("=============================\n");
+		printf("%s %s\n", cust.firstName.c_str(), cust.lastName.c_str());
+		printf("%s\n", cust.ccNum.c_str());
+		printf("%d\n", cust.type);
+		printf("%1.1f\n", cust.quantity);
+		printf("=============================\n");
 	}
+
+	//CThread tankThread(tankThread, ACTIVE, NULL);
+
+	//vector<CThread *> threads;
+	//vector<Pump *> pumps;
+
+	//// Create NUM_PUMPS pumps
+	//for (int i = 0; i < NUM_PUMPS; i++)
+	//{
+	//	CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
+	//	threads.push_back( thread_i );
+
+	//	Pump *pump_i = new Pump(i);
+	//	pump_i->Resume();
+	//	pumps.push_back( pump_i );
+
+	//	Sleep(100);
+	//}
 
 
 	// Add rendezvous event here
@@ -402,7 +652,13 @@ int main(int argc, char* argv[])
  */
 UINT __stdcall pumpThread(void *args)
 {
-	int id = *(int *)args;
+	int id = *(int*)args;
+
+	// Create the status datapool
+	std::string dpName = "PumpStatusDP" + std::to_string(id);
+	CDataPool pumpDP(dpName, sizeof(Transaction));
+	struct Transaction *transDP = (struct Transaction *)(pumpDP.LinkDataPool());
+	
 	printf("pumpThread %d waiting for rendezvous\n", id);
 	Initialize.Wait();
 	printf("pumpThread %d done waiting from rendezvous\n", id);
@@ -413,6 +669,14 @@ UINT __stdcall pumpThread(void *args)
 
 UINT __stdcall tankThread(void *args)
 {
+	// Create the fuel tanks
+	vector<FuelTank *> fuelTanks;
+	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	{
+		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+		fuelTanks.push_back(tank_i);
+	}
+
 	printf("tankThread waiting for rendezvous\n");
 	Initialize.Wait();
 	printf("tankThread done waiting from rendezvous\n");
