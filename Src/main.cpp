@@ -14,6 +14,8 @@
 const std::string FIRSTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\firstnames.txt";
 const std::string LASTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\lastnames.txt";
 
+char *states[4] = { "Arrived", "Ready", "Pumping", "Complete" };
+
 const int numRendezvous = NUM_PUMPS * 2 + 2;
 //const int numRendezvous = NUM_PUMPS * 2;
 
@@ -415,8 +417,7 @@ public:
 			// Maybe a better way to do this is to just put the customer
 			//	struct inside the transaction struct?
 			struct transaction trans;
-			trans.ready = false;
-			trans.pumping = false;
+			trans.state = ARRIVAL;
 			strcpy(trans.firstName, cust.firstName);
 			strcpy(trans.lastName, cust.lastName);
 			strcpy(trans.ccNum, cust.ccNum);
@@ -430,20 +431,20 @@ public:
 			WriteStatus(&trans);
 			PS1->Signal();
 
-			// wait for GSC to respond with ready=true
+			// wait for GSC to respond with state == READY
 			// Now we are the consumer - waiting for GSC's go-ahead on when
 			// to start the pump
 			PS1->Wait();
 			ReadStatus(&trans);
-			assert(trans.ready);
+			assert(trans.state == READY);
 			CS1->Signal();
 
-			//// send to GSC with pumping = true
-			//// We are the producer - want to send status info to GSC
-			//trans.pumping = true;
-			//CS1->Wait();
-			//WriteStatus(&trans);
-			//PS1->Signal();
+			// send to GSC with pumping = true
+			// We are the producer - want to send status info to GSC
+			trans.state = PUMPING;
+			CS1->Wait();
+			WriteStatus(&trans);
+			PS1->Signal();
 
 			//// Now we are the consumer - waiting for GSC's go-ahead on when
 			//// to start the pump
@@ -536,8 +537,7 @@ Pump::~Pump()
 // Write data to be stored in the 'Status' datapool
 void Pump::WriteStatus(transaction *trans)
 {
-	transDP->ready = trans->ready;
-	transDP->pumping = trans->pumping;
+	transDP->state = trans->state;
 	strcpy(transDP->firstName, trans->firstName);
 	strcpy(transDP->lastName, trans->lastName);
 	strcpy(transDP->ccNum, trans->ccNum);
@@ -552,8 +552,7 @@ void Pump::WriteStatus(transaction *trans)
 // read the data stored in the 'Status' datapool
 void Pump::ReadStatus(transaction *trans)
 {
-	trans->ready = transDP->ready;
-	trans->pumping = transDP->pumping;
+	trans->state = transDP->state;
 	strcpy(trans->firstName, transDP->firstName);
 	strcpy(trans->lastName, transDP->lastName);
 	strcpy(trans->ccNum, transDP->ccNum);
@@ -691,14 +690,16 @@ UINT __stdcall pumpThread(void *args)
 	MOVE_CURSOR(10, id * 10 + 2);
 	printf("%s", trans.ccNum);
 	MOVE_CURSOR(10, id * 10 + 3);
-	printf("$1");
+	printf("%s", states[trans.state]);
 	MOVE_CURSOR(10, id * 10 + 4);
 	printf("%1.1f", trans.quantity);
 	MOVE_CURSOR(10, id * 10 + 5);
 	printf("%d", trans.type);
 	ConsoleMutex.Signal();
 
-	// should change state here
+	// shou
+	assert(trans.state == ARRIVAL);
+	trans.state = READY;
 	CS1.Wait();
 	WritePumpStatus(transDP, &trans);
 	PS1.Signal();
@@ -707,13 +708,18 @@ UINT __stdcall pumpThread(void *args)
 	Sleep(500);
 
 
-	// Now we are the producer - The pump can start dispensing gas once
-	// the flag trans.ready is set to true and sent back to the datapool
-	// Only setting trans.ready to true to signal to pump that its ready for use
-	CS1.Wait();
-	trans.ready = true;
-	WritePumpStatus(transDP, &trans);
-	PS1.Signal();
+	// Read the transaction - ready should be false
+	PS1.Wait();
+	ReadPumpStatus(transDP, &trans);
+	assert(trans.state == PUMPING);
+	CS1.Signal();
+
+	// Print details to console
+	ConsoleMutex.Wait();
+	MOVE_CURSOR(10, id * 10 + 3);
+	printf("%s", states[trans.state]);
+	ConsoleMutex.Signal();
+
 
 	return 0;
 }
@@ -721,8 +727,7 @@ UINT __stdcall pumpThread(void *args)
 
 void WritePumpStatus(struct transaction *transDP, transaction *trans)
 {
-	transDP->ready = trans->ready;
-	transDP->pumping = trans->pumping;
+	transDP->state = trans->state;
 	strcpy(transDP->firstName, trans->firstName);
 	strcpy(transDP->lastName, trans->lastName);
 	strcpy(transDP->ccNum, trans->ccNum);
@@ -734,8 +739,7 @@ void WritePumpStatus(struct transaction *transDP, transaction *trans)
 
 void ReadPumpStatus(struct transaction *transDP, transaction *trans)
 {
-	trans->ready = transDP->ready;
-	trans->pumping = transDP->pumping;
+	trans->state = transDP->state;
 	strcpy(trans->firstName, transDP->firstName);
 	strcpy(trans->lastName, transDP->lastName);
 	strcpy(trans->ccNum, transDP->ccNum);

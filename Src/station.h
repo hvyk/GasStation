@@ -15,7 +15,7 @@
 #define CC_NUM_LEN		21
 #define NUM_CUSTOMERS	1
 
-#define NUM_PUMPS	1
+#define NUM_PUMPS	4
 
 // This is a problem
 
