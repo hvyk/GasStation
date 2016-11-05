@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <cassert>
 #include "rt/rt.h"
 #include "station.h"
 //#include "customer.h"
@@ -22,6 +23,8 @@ const int numRendezvous = NUM_PUMPS * 2 + 2;
 CRendezvous Initialize("InitRendezvous", numRendezvous );
 CSemaphore ConsoleMutex("ConsoleMutex", 1);
 
+void WritePumpStatus(struct transaction *transDP, transaction *trans);
+void ReadPumpStatus(struct transaction *transDP, transaction *trans);
 
 
 // rand is thread local, so let's change this up
@@ -362,7 +365,7 @@ private:
 	int id;
 
 	CDataPool *pumpDP;
-	struct Transaction *transDP;
+	struct transaction *transDP;
 
 	CSemaphore *PS1;
 	CSemaphore *CS1;
@@ -371,16 +374,15 @@ private:
 	CSemaphore *customerData;
 
 	// Sends the data stored in trans to the datapool given by transDP
-	//void Produce(Transaction *trans);
-	void WriteStatus(Transaction *trans);
+	//void Produce(transaction *trans);
+	void WriteStatus(transaction *trans);
 	// Receives the data stored in trans to the datapool given by transDP
-	//void Consume(Transaction *trans);
-	void ReadStatus(Transaction *trans);
+	//void Consume(transaction *trans);
+	void ReadStatus(transaction *trans);
 
 	// Dummy code for testing until a Customer class is created
-	Transaction generateTransaction();
 	std::string generateCC();
-	void printTransaction(Transaction *trans, int id, bool producing);
+	void printTransaction(transaction *trans, int id, bool producing);
 
 	std::vector<FuelTank *> fuelTanks;
 
@@ -401,32 +403,82 @@ public:
 			fuelTanks.push_back(tank_i);
 		}
 
-		// Create the status datapool
-		std::string dpName = "PumpStatusDP" + std::to_string(id);
-		CDataPool *pumpDP = new CDataPool(dpName, sizeof(Transaction));
-		transDP = (struct Transaction *)(pumpDP->LinkDataPool());
+		//// Create the status datapool
+		//std::string dpName = "PumpStatusDP" + std::to_string(id);
+		//pumpDP = new CDataPool(dpName, sizeof(transaction));
+		//transDP = (struct transaction *)(pumpDP->LinkDataPool());
 
-		// Add rendezvous event here
-		printf("PumpMain %d waiting for rendezvous\n", id);
-		Initialize.Wait();
-		printf("Pump %d done waiting from rendezvous\n", id);
+		struct custInfo cust;
 
-		// Generating customers
-		Customer *theCustomers[100];
-		for (int i = 0; i < 100; i++)
+		Customer *theCustomers[10];
+		for (int i = 0; i < NUM_CUSTOMERS; i++)
 		{
 			theCustomers[i] = new Customer(id);
 			theCustomers[i]->Resume();
 		}
 
-		struct custInfo cust;
-		
-		customerPipeline = new CPipe("customerPipeline0");
-		customerData->Signal();
-		customerPipeline->Read(&cust, sizeof(cust));
-		
+		for (int i = 0; i < NUM_CUSTOMERS; i++)
+		{
+			// get customer info
+			customerPipeline->Read(&cust, sizeof(cust));
 
+			// create transaction object
+			// Maybe a better way to do this is to just put the customer
+			//	struct inside the transaction struct?
+			struct transaction trans;
+			trans.ready = false;
+			trans.pumping = false;
+			strcpy(trans.firstName, cust.firstName);
+			strcpy(trans.lastName, cust.lastName);
+			strcpy(trans.ccNum, cust.ccNum);
+			trans.time = time(NULL);
+			trans.type = cust.type;
+			trans.quantity = cust.quantity;
 
+			// send to GSC with ready=false
+			// We are the producer - want to send status info to GSC
+			CS1->Wait();
+			WriteStatus(&trans);
+			PS1->Signal();
+
+			// wait for GSC to respond with ready=true
+			// Now we are the consumer - waiting for GSC's go-ahead on when
+			// to start the pump
+			PS1->Wait();
+			ReadStatus(&trans);
+			//assert(trans.ready);
+			CS1->Signal();
+
+			//// send to GSC with pumping = true
+			//// We are the producer - want to send status info to GSC
+			//trans.pumping = true;
+			//CS1->Wait();
+			//WriteStatus(&trans);
+			//PS1->Signal();
+
+			//// Now we are the consumer - waiting for GSC's go-ahead on when
+			//// to start the pump
+			//trans.pumping = false;
+			//PS1->Wait();
+			//ReadStatus(&trans);
+			//assert(!trans.pumping);
+			//CS1->Signal();
+
+			//// dispense gas
+			//// send to GSC with pumping = false
+		}
+
+		//printf("=============================\n");
+		//printf("%s %s\n", cust.firstName, cust.lastName);
+		//printf("%s\n", cust.ccNum);
+		//printf("%d\n", cust.type);
+		//printf("%1.1f\n", cust.quantity);
+		//printf("=============================\n");
+
+		// Add rendezvous event here
+		printf("PumpMain %d waiting for rendezvous\n", id);
+		Initialize.Wait();
+		printf("Pump %d done waiting from rendezvous\n", id);
 
 		return 0;
 	}
@@ -443,7 +495,7 @@ Pump::Pump()
 	CS1 = new CSemaphore("StatusConsumer0", 1, 1);
 
 	customerPipeline = new CPipe("customerPipeline0");
-	customerData = new CSemaphore("customerData0", 1, 0);
+	customerData = new CSemaphore("customerData0", 1);
 
 	// Need access to the fuel tank data pools
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
@@ -468,8 +520,14 @@ Pump::Pump(int id)
 	PS1 = new CSemaphore(producerName, 0, 1);
 	CS1 = new CSemaphore(consumerName, 1, 1);
 
+
+	// Create the status datapool
+	std::string dpName = "PumpStatusDP" + std::to_string(id);
+	pumpDP = new CDataPool(dpName, sizeof(transaction));
+	transDP = (struct transaction *)(pumpDP->LinkDataPool());
+
 	customerPipeline = new CPipe(customerPipelineName);
-	customerData = new CSemaphore(customerDataName, 1, 0);
+	customerData = new CSemaphore(customerDataName, 1);
 
 	// Need access to the fuel tank data pools
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
@@ -491,49 +549,34 @@ Pump::~Pump()
 //void Pump::Produce(Transaction *trans)
 
 // Write data to be stored in the 'Status' datapool
-void Pump::WriteStatus(Transaction *trans)
+void Pump::WriteStatus(transaction *trans)
 {
 	transDP->ready = trans->ready;
 	transDP->pumping = trans->pumping;
-	transDP->firstName = trans->firstName;
-	transDP->lastName = trans->lastName;
-	transDP->ccNum = trans->ccNum;
+	strcpy(transDP->firstName, trans->firstName);
+	strcpy(transDP->lastName, trans->lastName);
+	strcpy(transDP->ccNum, trans->ccNum);
 	transDP->time = trans->time;
 	transDP->type = trans->type;
 	transDP->quantity = trans->quantity;
 }
 
 
-//void Pump::Consume(Transaction *trans)
+//void Pump::Consume(transaction *trans)
 
 // read the data stored in the 'Status' datapool
-void Pump::ReadStatus(Transaction *trans)
+void Pump::ReadStatus(transaction *trans)
 {
 	trans->ready = transDP->ready;
 	trans->pumping = transDP->pumping;
-	trans->firstName = transDP->firstName;
-	trans->lastName = transDP->lastName;
-	trans->ccNum = transDP->ccNum;
+	strcpy(trans->firstName, transDP->firstName);
+	strcpy(trans->lastName, transDP->lastName);
+	strcpy(trans->ccNum, transDP->ccNum);
 	trans->time	= transDP->time;
 	trans->type	= transDP->type;
 	trans->quantity = transDP->quantity;
 }
 
-
-// Generate the information required for a transaction - all
-// of which is dummy sample data
-Transaction Pump::generateTransaction()
-{
-	std::string firstName = "Bobby";
-	std::string lastName = "Dan";
-	std::string ccNum = generateCC();
-	time_t		now = time(0);
-	FuelType	type = FuelType(std::rand() % 4);
-	float		quantity = (float)(std::rand() % 130) / 2;
-
-	Transaction trans = { false, false, firstName, lastName, ccNum, now, type, quantity };
-	return trans;
-}
 
 
 // Generates a credit card for a purchase
@@ -553,35 +596,35 @@ std::string Pump::generateCC()
 }
 
 
-// Prints the details of a transaction, which is generated randomly
-void Pump::printTransaction(Transaction *trans, int id, bool producing)
-{
-	char *fType = "OCTANE 87";
-	switch (trans->type)
-	{
-	case OCTANE87:
-		fType = "OCTANE 87";
-		break;
-	case OCTANE89:
-		fType = "OCTANE 89";
-		break;
-	case OCTANE91:
-		fType = "OCTANE 91";
-		break;
-	case OCTANE94:
-		fType = "OCTANE 94";
-		break;
-	}
-
-	char *transTime = ctime(&(trans->time));
-
-	printf("\tPump %d is %s\n", id, producing ? "Producing" : "Consuming");
-	printf("\t%s %s\n", trans->firstName.c_str(), trans->lastName.c_str());
-	printf("\t%s\n", trans->ccNum.c_str());
-	printf("\t%s", transTime); // \n char added by ctime(...)
-	printf("\t%s\n", fType);
-	printf("\t%1.1f\n\n", trans->quantity);
-}
+//// Prints the details of a transaction, which is generated randomly
+//void Pump::printTransaction(transaction *trans, int id, bool producing)
+//{
+//	char *fType = "OCTANE 87";
+//	switch (trans->type)
+//	{
+//	case OCTANE87:
+//		fType = "OCTANE 87";
+//		break;
+//	case OCTANE89:
+//		fType = "OCTANE 89";
+//		break;
+//	case OCTANE91:
+//		fType = "OCTANE 91";
+//		break;
+//	case OCTANE94:
+//		fType = "OCTANE 94";
+//		break;
+//	}
+//
+//	char *transTime = ctime(&(trans->time));
+//
+//	printf("\tPump %d is %s\n", id, producing ? "Producing" : "Consuming");
+//	printf("\t%s %s\n", trans->firstName.c_str(), trans->lastName.c_str());
+//	printf("\t%s\n", trans->ccNum.c_str());
+//	printf("\t%s", transTime); // \n char added by ctime(...)
+//	printf("\t%s\n", fType);
+//	printf("\t%1.1f\n\n", trans->quantity);
+//}
 
 
 // Needs to pass information to the FuelTanks to reduce their ammount
@@ -634,58 +677,65 @@ int main(int argc, char* argv[])
 	//printf("}\n\n");
 	//cout << "my directory is " << ExePath() << "\n";
 
-	CSemaphore *customerData = new CSemaphore("customerData0", 1);
-	CPipe *customerPipeline = new CPipe("customerPipeline0");
+	//CSemaphore *customerData = new CSemaphore("customerData0", 1);
+	//CPipe *customerPipeline = new CPipe("customerPipeline0");
 
-	struct custInfo cust;
+	//struct custInfo cust;
 
-	Customer *theCustomers[10];
-	for (int i = 0; i < 10; i++)
-	{
-		theCustomers[i] = new Customer();
-		theCustomers[i]->Resume();
-		Sleep(200);
-	//}
-
-
+	//Customer *theCustomers[10];
 	//for (int i = 0; i < 10; i++)
 	//{
-		// read from the pipeline
-		//customerData->Wait();
-		customerPipeline->Read(&cust, sizeof(cust));
-		//customerData->Signal();
+	//	theCustomers[i] = new Customer();
+	//	theCustomers[i]->Resume();
+	//	Sleep(200);
+	////}
 
-		printf("=============================\n");
-		printf("%s %s\n", cust.firstName, cust.lastName);
-		printf("%s\n", cust.ccNum);
-		printf("%d\n", cust.type);
-		printf("%1.1f\n", cust.quantity);
-		printf("=============================\n");
-	}
 
-	//CThread tankThread(tankThread, ACTIVE, NULL);
+	////for (int i = 0; i < 10; i++)
+	////{
+	//	// read from the pipeline
+	//	//customerData->Wait();
+	//	customerPipeline->Read(&cust, sizeof(cust));
+	//	//customerData->Signal();
 
-	//vector<CThread *> threads;
-	//vector<Pump *> pumps;
-
-	//// Create NUM_PUMPS pumps
-	//for (int i = 0; i < NUM_PUMPS; i++)
-	//{
-	//	CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
-	//	threads.push_back( thread_i );
-
-	//	Pump *pump_i = new Pump(i);
-	//	pump_i->Resume();
-	//	pumps.push_back( pump_i );
-
-	//	Sleep(100);
+	//	printf("=============================\n");
+	//	printf("%s %s\n", cust.firstName, cust.lastName);
+	//	printf("%s\n", cust.ccNum);
+	//	printf("%d\n", cust.type);
+	//	printf("%1.1f\n", cust.quantity);
+	//	printf("=============================\n");
 	//}
+
+	CThread tankThread(tankThread, ACTIVE, NULL);
+
+	vector<CThread *> threads;
+	vector<Pump *> pumps;
+
+	// Create NUM_PUMPS pumps
+	for (int i = 0; i < NUM_PUMPS; i++)
+	{
+		CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
+		threads.push_back( thread_i );
+
+		Pump *pump_i = new Pump(i);
+		pump_i->Resume();
+		pumps.push_back( pump_i );
+
+		Sleep(100);
+	}
 
 
 	// Add rendezvous event here
 	printf("main waiting for rendezvous\n");
 	Initialize.Wait();
 	printf("main done waiting from rendezvous\n");
+
+	
+
+	for (int i = 0; i < NUM_PUMPS; i++)
+	{
+		pumps[i]->WaitForThread();
+	}
 
 	return 0;
 }
@@ -703,14 +753,86 @@ UINT __stdcall pumpThread(void *args)
 
 	// Create the status datapool
 	std::string dpName = "PumpStatusDP" + std::to_string(id);
-	CDataPool pumpDP(dpName, sizeof(Transaction));
-	struct Transaction *transDP = (struct Transaction *)(pumpDP.LinkDataPool());
+	CDataPool pumpDP(dpName, sizeof(transaction));
+	struct transaction *transDP = (struct transaction *)(pumpDP.LinkDataPool());
+
+	// Create the Producer and Consumer Semaphores and give them a name and
+	// index aligned with this threads index/id
+	std::string producerName = "StatusProducer" + std::to_string(id);
+	std::string consumerName = "StatusConsumer" + std::to_string(id);
+
+	CSemaphore PS1(producerName, 0, 1);
+	CSemaphore CS1(consumerName, 1, 1);
 	
 	printf("pumpThread %d waiting for rendezvous\n", id);
 	Initialize.Wait();
 	printf("pumpThread %d done waiting from rendezvous\n", id);
 
+
+	printf("Thread %d reading transaction", id);
+
+	// NOT WORKING!! - 
+	// Read the transaction - ready should be false
+	PS1.Wait();
+	transaction trans;
+	ReadPumpStatus(transDP, &trans);
+	//assert(!trans.ready);
+	CS1.Signal();
+
+	printf("Thread %d writing to console");
+	// Print details to console
+	ConsoleMutex.Wait();
+	MOVE_CURSOR(10, id * 10 + 1);
+	printf("%s %s", trans.firstName, trans.lastName);
+	MOVE_CURSOR(10, id * 10 + 2);
+	printf("%s", trans.ccNum);
+	MOVE_CURSOR(10, id * 10 + 3);
+	printf("$1");
+	MOVE_CURSOR(10, id * 10 + 4);
+	printf("%1.1f", trans.quantity);
+	MOVE_CURSOR(10, id * 10 + 5);
+	printf("%d", trans.type);
+	ConsoleMutex.Signal();
+
+
+	Sleep(8000);
+
+
+	// Now we are the producer - The pump can start dispensing gas once
+	// the flag trans.ready is set to true and sent back to the datapool
+	// Only setting trans.ready to true to signal to pump that its ready for use
+	CS1.Wait();
+	trans.ready = true;
+	WritePumpStatus(transDP, &trans);
+	PS1.Signal();
+
 	return 0;
+}
+
+
+void WritePumpStatus(struct transaction *transDP, transaction *trans)
+{
+	transDP->ready = trans->ready;
+	transDP->pumping = trans->pumping;
+	strcpy(transDP->firstName, trans->firstName);
+	strcpy(transDP->lastName, trans->lastName);
+	strcpy(transDP->ccNum, trans->ccNum);
+	transDP->time = trans->time;
+	transDP->type = trans->type;
+	transDP->quantity = trans->quantity;
+}
+
+
+void ReadPumpStatus(struct transaction *transDP, transaction *trans)
+{
+	trans->ready = transDP->ready;
+	trans->pumping = transDP->pumping;
+	strcpy(trans->firstName, transDP->firstName);
+	strcpy(trans->lastName, transDP->lastName);
+	strcpy(trans->ccNum, transDP->ccNum);
+	trans->time = transDP->time;
+	trans->type = transDP->type;
+	trans->quantity = transDP->quantity;
 }
 
 

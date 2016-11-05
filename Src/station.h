@@ -13,6 +13,7 @@
 
 #define MAX_NAME_LEN	50
 #define CC_NUM_LEN		21
+#define NUM_CUSTOMERS	10
 
 #define NUM_PUMPS	4
 
@@ -60,13 +61,13 @@ struct custInfo
 	float quantity;
 };
 
-struct Transaction
+struct transaction
 {
 	bool ready;
 	bool pumping;
-	std::string firstName;
-	std::string lastName;
-	std::string ccNum;
+	char firstName[MAX_NAME_LEN];
+	char lastName[MAX_NAME_LEN];
+	char ccNum[CC_NUM_LEN];
 	time_t time;
 	FuelType type;
 	float quantity;
@@ -75,7 +76,7 @@ struct Transaction
 struct PumpStatus
 {
 	// The details about the transaction
-	Transaction trans;
+	transaction trans;
 	// A flag to indicate that the transaction approved and pump is ready
 	bool pumpReady;
 };
