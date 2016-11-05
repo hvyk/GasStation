@@ -13,9 +13,9 @@
 
 #define MAX_NAME_LEN	50
 #define CC_NUM_LEN		21
-#define NUM_CUSTOMERS	10
+#define NUM_CUSTOMERS	1
 
-#define NUM_PUMPS	4
+#define NUM_PUMPS	1
 
 // This is a problem
 
@@ -61,10 +61,19 @@ struct custInfo
 	float quantity;
 };
 
+// 0 - arrival
+// 1 - ready to start pumping
+// 2 - pumping
+// 3 - finished pumping, goodbye customer
+// int state;
+
+#define ARRIVAL		0
+#define READY		1
+#define PUMPING		2
+#define	COMPLETE	3
 struct transaction
 {
-	bool ready;
-	bool pumping;
+	int state;
 	char firstName[MAX_NAME_LEN];
 	char lastName[MAX_NAME_LEN];
 	char ccNum[CC_NUM_LEN];
