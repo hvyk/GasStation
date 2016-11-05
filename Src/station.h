@@ -11,6 +11,8 @@
  * for homogeneity across all classes 
  */
 
+#define MAX_NAME_LEN	50
+#define CC_NUM_LEN		21
 
 #define NUM_PUMPS	4
 
@@ -51,9 +53,9 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 
 struct custInfo
 {
-	std::string firstName;
-	std::string lastName;
-	std::string ccNum;
+	char firstName[MAX_NAME_LEN];
+	char lastName[MAX_NAME_LEN];
+	char ccNum[CC_NUM_LEN];
 	FuelType type;
 	float quantity;
 };

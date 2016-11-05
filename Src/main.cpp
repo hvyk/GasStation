@@ -49,9 +49,9 @@ private:
 	// The id of the pump for semaphore management
 	int id;
 
-	std::string firstName;
-	std::string lastName;
-	std::string ccNum;
+	char firstName[MAX_NAME_LEN];
+	char lastName[MAX_NAME_LEN];
+	char ccNum[CC_NUM_LEN];
 	FuelType type;
 	float quantity;
 
@@ -62,10 +62,10 @@ private:
 
 	// Creates a name and sets the member variables
 	std::string readName(std::string filename);
-	std::string generateFirstName();
-	std::string generateLastName();
+	bool generateFirstName(char *fName, int len);
+	bool generateLastName(char *lName, int len);
 	// Creates a credit card number and sets the member variable
-	std::string generateCC();
+	void generateCC(char *ccNum);
 
 	//struct custInfo generateCustomer();
 
@@ -81,19 +81,24 @@ public:
 		srand(seed);
 
 		// Generate a Customer using 'struct custInfo'
-		this->firstName = generateFirstName();
-		this->lastName = generateLastName();
-		this->ccNum = generateCC();
+		generateFirstName(firstName, MAX_NAME_LEN);
+		generateLastName(lastName, MAX_NAME_LEN);
+		generateCC(ccNum);
 		this->type = FuelType(std::rand() % 4);
 		this->quantity = (float)(std::rand() % 110) / 2 + 10;
 
-		struct custInfo cust = {
-			firstName,
-			lastName,
-			ccNum,
-			type,
-			quantity
-		};
+		struct custInfo cust;// = {
+		//	firstName,
+		//	lastName,
+		//	ccNum,
+		//	type,
+		//	quantity
+		//};
+		strcpy(cust.firstName, firstName);
+		strcpy(cust.lastName, lastName);
+		strcpy(cust.ccNum, ccNum);
+		cust.type = type;
+		cust.quantity = quantity;
 
 		// Write to pipeline
 		customerData->Wait();
@@ -150,21 +155,53 @@ std::string Customer::readName(std::string filename)
 }
 
 
-std::string Customer::generateFirstName()
+bool Customer::generateFirstName(char *fName, int len)
 {
 	// read random line from firstnames.txt
 	//std::string filename = "..\\Src\\names\\firstname.txt";
 	std::string filename = FIRSTNAMES;
-	return readName(filename);
+	std::string tmp = readName(filename);
+	if (tmp == "")
+	{
+		return false;
+	}
+	for (int i = 0; i < len && i < tmp.length(); i++)
+	{
+		if (i == len-1)
+		{
+			fName[i] = '\0';
+		}
+		else
+		{
+			fName[i] = tmp.at(i);
+		}
+	}
+	return true;
 }
 
 
-std::string Customer::generateLastName()
+bool Customer::generateLastName(char *lName, int len)
 {
 	// read random line from lastnames.txt
 	//std::string filename = "..\\Src\\names\\lastname.txt";
 	std::string filename = LASTNAMES;
-	return readName(filename);
+	std::string tmp = readName(filename);
+	if (tmp == "")
+	{
+		return false;
+	}
+	for (int i = 0; i < len && i < tmp.length(); i++)
+	{
+		if (i == len-1)
+		{
+			lName[i] = '\0';
+		}
+		else
+		{
+			lName[i] = tmp.at(i);
+		}
+	}
+	return true;
 }
 
 //struct custInfo Customer::generateCustomer()
@@ -174,7 +211,7 @@ std::string Customer::generateLastName()
 
 // Generates a credit card for a purchase
 // will inevitably be moved to the Customer class when created
-std::string Customer::generateCC()
+void Customer::generateCC(char *ccnum)
 {
 	std::string tmp;
 	int num;
@@ -185,7 +222,17 @@ std::string Customer::generateCC()
 			tmp += " ";
 		tmp += std::to_string(num);
 	}
-	return tmp;
+	for (int i = 0; i < CC_NUM_LEN; i++)
+	{
+		if (i == CC_NUM_LEN - 1)
+		{
+			ccnum[i] = '\0';
+		}
+		else
+		{
+			ccnum[i] = tmp[i];
+		}
+	}
 }
 
 
@@ -609,8 +656,8 @@ int main(int argc, char* argv[])
 		//customerData->Signal();
 
 		printf("=============================\n");
-		printf("%s %s\n", cust.firstName.c_str(), cust.lastName.c_str());
-		printf("%s\n", cust.ccNum.c_str());
+		printf("%s %s\n", cust.firstName, cust.lastName);
+		printf("%s\n", cust.ccNum);
 		printf("%d\n", cust.type);
 		printf("%1.1f\n", cust.quantity);
 		printf("=============================\n");
