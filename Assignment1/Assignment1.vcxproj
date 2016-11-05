@@ -79,15 +79,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Src\main.cpp" />
-    <ClCompile Include="..\Src\pump.cpp" />
     <ClCompile Include="..\Src\rt\rt.cpp" />
-    <ClCompile Include="..\Src\tank.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Src\pump.h" />
     <ClInclude Include="..\Src\rt\rt.h" />
     <ClInclude Include="..\Src\station.h" />
-    <ClInclude Include="..\Src\tank.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

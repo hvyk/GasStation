@@ -1,68 +1,82 @@
 #include "station.h"
 #include "tank.h"
 
-Tank::Tank()
+FuelTank::FuelTank()
 {
-	this->remaining = MAX_CAPACITY;
-	this->type = OCTANE87;
+	//printf("FuelTank default constructor\n");
 	mRemain = new CMutex("remaining", 1);
+
+	theDataPool = new CDataPool(string("OCTANE") + to_string(0), sizeof(struct Tank));
+	tank = (struct Tank *)(theDataPool->LinkDataPool()); 
+
+	mRemain->Wait();
+	tank->remaining = MAX_CAPACITY;
+	tank->type = OCTANE87;
+	mRemain->Signal();
 }
 
-//Tank::Tank(FuelType type, float remaining)
-//{
-//	this->remaining = remaining;
-//	this->type = type;
-//	mRemain = new CMutex("remaining", 1);
-}
-
-Tank::Tank(const Tank &obj)
+FuelTank::FuelTank(FuelType type, float remaining)
 {
-	this->remaining = obj.remaining;
-	this->type = obj.type;
+	//printf("FuelTank constructor %d %1.1f\n", type, remaining);
+	mRemain = new CMutex("remaining", 1);
+
+	theDataPool = new CDataPool(string("OCTANE") + to_string(type), sizeof(struct Tank));
+	tank = (struct Tank *)(theDataPool->LinkDataPool()); 
+
+	mRemain->Wait();
+	tank->remaining = remaining;
+	tank->type = OCTANE87;
+	mRemain->Signal();
 }
 
-Tank::~Tank()
+FuelTank::FuelTank(const FuelTank &obj)
 {
-	// no pointers to delete
+	tank->remaining = obj.tank->remaining;
 }
 
-float Tank::decrement()
+FuelTank::~FuelTank()
+{
+	delete theDataPool;
+}
+
+float FuelTank::decrement()
 {
 	float newVal;
 	
 	mRemain->Wait();
-	this->remaining = this->remaining - 1;
-	newVal = this->remaining;
+	tank->remaining = tank->remaining - (float)0.5;
+	newVal = tank->remaining;
 	mRemain->Signal();
 
 	return newVal;
 }
 
 
-float Tank::fill()
+float FuelTank::fill()
 {
 	float newVal;
 
 	mRemain->Wait();
-	this->remaining = MAX_CAPACITY;
-	newVal = this->remaining;
+	tank->remaining = MAX_CAPACITY;
+	newVal = tank->remaining;
 	mRemain->Signal();
 
 	return newVal;
 }
 
-float Tank::getRemaining()
+float FuelTank::getRemaining()
 {
 	float retVal;
 
 	mRemain->Wait();
-	retVal = this->remaining;
+	retVal = tank->remaining;
 	mRemain->Signal();
 
+	//printf(">>> remaining = %1.1f\n", retVal);
 	return retVal;
 }
 
-//FuelType Tank::getType()
-//{
-//	return type;
-//}
+FuelType FuelTank::getType()
+{
+	return tank->type;
+}
