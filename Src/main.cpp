@@ -704,9 +704,7 @@ UINT __stdcall pumpThread(void *args)
 	WritePumpStatus(transDP, &trans);
 	PS1.Signal();
 
-
 	Sleep(500);
-
 
 	// Read the transaction - ready should be false
 	PS1.Wait();

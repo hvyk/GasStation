@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CustomerDisplay", "CustomerDisplay\CustomerDisplay.vcxproj", "{34121CE1-EFA4-4421-A52D-3F0D52804C51}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GasStationComputer", "GasStationComputer\GasStationComputer.vcxproj", "{5A46B551-1550-45A8-AC6E-3374E9B33EDD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{34121CE1-EFA4-4421-A52D-3F0D52804C51}.Debug|Win32.ActiveCfg = Debug|Win32
+		{34121CE1-EFA4-4421-A52D-3F0D52804C51}.Debug|Win32.Build.0 = Debug|Win32
+		{34121CE1-EFA4-4421-A52D-3F0D52804C51}.Release|Win32.ActiveCfg = Release|Win32
+		{34121CE1-EFA4-4421-A52D-3F0D52804C51}.Release|Win32.Build.0 = Release|Win32
+		{5A46B551-1550-45A8-AC6E-3374E9B33EDD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5A46B551-1550-45A8-AC6E-3374E9B33EDD}.Debug|Win32.Build.0 = Debug|Win32
+		{5A46B551-1550-45A8-AC6E-3374E9B33EDD}.Release|Win32.ActiveCfg = Release|Win32
+		{5A46B551-1550-45A8-AC6E-3374E9B33EDD}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

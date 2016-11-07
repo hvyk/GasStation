@@ -17,7 +17,6 @@
 
 #define NUM_PUMPS	4
 
-// This is a problem
 
 /***********************************************************
  *						Customers
