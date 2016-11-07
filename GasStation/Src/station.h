@@ -15,7 +15,7 @@
 #define CC_NUM_LEN		21
 #define NUM_CUSTOMERS	1
 
-#define NUM_PUMPS	4
+#define NUM_PUMPS		1
 
 
 /***********************************************************
@@ -66,10 +66,11 @@ struct custInfo
 // 3 - finished pumping, goodbye customer
 // int state;
 
-#define ARRIVAL		0
-#define READY		1
-#define PUMPING		2
-#define	COMPLETE	3
+#define ACK			0
+#define ARRIVAL		1
+#define READY		2
+#define PUMPING		3
+#define	COMPLETE	4
 struct transaction
 {
 	int state;

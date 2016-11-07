@@ -238,6 +238,7 @@ class Pump : public ActiveClass
 private:
 	// The pump number/id
 	int id;
+	bool dispensingFlg;
 
 	CDataPool *pumpDP;
 	struct transaction *transDP;
@@ -258,6 +259,8 @@ private:
 	// Dummy code for testing until a Customer class is created
 	std::string generateCC();
 	void printTransaction(transaction *trans, int id, bool producing);
+
+	void dispense(float quantity);
 
 	std::vector<FuelTank *> fuelTanks;
 
@@ -310,7 +313,7 @@ public:
 			trans.type = cust.type;
 			trans.quantity = cust.quantity;
 
-			// send to GSC with ready=false
+			// send to GSC with state == ARRIVAL
 			// We are the producer - want to send status info to GSC
 			CS1->Wait();
 			WriteStatus(&trans);
@@ -324,6 +327,7 @@ public:
 			assert(trans.state == READY);
 			CS1->Signal();
 
+
 			// send to GSC with pumping = true
 			// We are the producer - want to send status info to GSC
 			trans.state = PUMPING;
@@ -331,16 +335,33 @@ public:
 			WriteStatus(&trans);
 			PS1->Signal();
 
+			dispense(trans.quantity);
+
 			//// Now we are the consumer - waiting for GSC's go-ahead on when
 			//// to start the pump
 			//trans.pumping = false;
-			//PS1->Wait();
-			//ReadStatus(&trans);
-			//assert(!trans.pumping);
-			//CS1->Signal();
+			PS1->Wait();
+			ReadStatus(&trans);
+			assert(trans.state == ACK);
+			CS1->Signal();
 
-			//// dispense gas
-			//// send to GSC with pumping = false
+			// Wait until pumping done to inform GSC
+			while (dispensingFlg)
+			{
+				Sleep(500);
+			}
+
+			// let the GSC know we are done filling
+			trans.state = COMPLETE;
+			CS1->Wait();
+			WriteStatus(&trans);
+			PS1->Signal();
+
+			// Verify the GSC has acknowledged our status update
+			PS1->Wait();
+			ReadStatus(&trans);
+			assert(trans.state == ACK);
+			CS1->Signal();
 		}
 
 		//printf("=============================\n");
@@ -360,7 +381,8 @@ public:
 // Baaad, don't use this constructor for more than one pump
 Pump::Pump()
 {
-	id = 0;
+	this->id = 0;
+	this->dispensingFlg = false;
 
 	PS1 = new CSemaphore("StatusProducer0", 0, 1);
 	CS1 = new CSemaphore("StatusConsumer0", 1, 1);
@@ -382,6 +404,7 @@ Pump::Pump()
 Pump::Pump(int id)
 {
 	this->id = id;
+	this->dispensingFlg = false;
 
 	std::string producerName = "StatusProducer" + std::to_string(this->id);
 	std::string consumerName = "StatusConsumer" + std::to_string(this->id);
@@ -416,6 +439,11 @@ Pump::~Pump()
 	delete customerData;
 }
 
+void Pump::dispense(float quantity)
+{
+	dispensingFlg = true;
+	Sleep((int)(quantity*1000));
+}
 
 //void Pump::Produce(Transaction *trans)
 
@@ -563,7 +591,7 @@ UINT __stdcall pumpThread(void *args)
 	PS1.Wait();
 	transaction trans;
 	ReadPumpStatus(transDP, &trans);
-	//assert(!trans.ready);
+	assert(trans.state == ARRIVAL);
 	CS1.Signal();
 
 	// Print details to console
@@ -582,8 +610,7 @@ UINT __stdcall pumpThread(void *args)
 	printf("%d", trans.type);
 	ConsoleMutex.Signal();
 
-	// shou
-	assert(trans.state == ARRIVAL);
+	// Inform the customer they are free to start pumping
 	trans.state = READY;
 	CS1.Wait();
 	WritePumpStatus(transDP, &trans);
@@ -591,18 +618,41 @@ UINT __stdcall pumpThread(void *args)
 
 	Sleep(500);
 
-	// Read the transaction - ready should be false
+	// Verify the customer is pumping and update the console
 	PS1.Wait();
 	ReadPumpStatus(transDP, &trans);
 	assert(trans.state == PUMPING);
 	CS1.Signal();
 
-	// Print details to console
+	// update the console
 	ConsoleMutex.Wait();
 	MOVE_CURSOR(10, id * 10 + 3);
 	printf("%s", states[trans.state]);
 	ConsoleMutex.Signal();
 
+	// Send an ACK
+	trans.state = ACK;
+	CS1.Wait();
+	WritePumpStatus(transDP, &trans);
+	PS1.Signal();
+
+	// Verify the customer is complete pumping  and update the console
+	PS1.Wait();
+	ReadPumpStatus(transDP, &trans);
+	assert(trans.state == COMPLETE);
+	CS1.Signal();
+
+	// update the console
+	ConsoleMutex.Wait();
+	MOVE_CURSOR(10, id * 10 + 3);
+	printf("%s", states[trans.state]);
+	ConsoleMutex.Signal();
+
+	// Send an ACK
+	trans.state = ACK;
+	CS1.Wait();
+	WritePumpStatus(transDP, &trans);
+	PS1.Signal();
 
 	return 0;
 }

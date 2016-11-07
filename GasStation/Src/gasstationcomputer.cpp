@@ -17,12 +17,12 @@ int main(int argc, char *argv[])
 
 	printf("Ready to go!\n");
 
-	vector<FuelTank *> fuelTanks;
-	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
-	{
-		FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
-		fuelTanks.push_back(tank_i);
-	}
+	//vector<FuelTank *> fuelTanks;
+	//for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	//{
+	//	FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
+	//	fuelTanks.push_back(tank_i);
+	//}
 
 
 	return 0;
