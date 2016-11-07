@@ -15,18 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Src\main.cpp">
+    <ClCompile Include="..\Src\rt\rt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Src\rt\rt.cpp">
+    <ClCompile Include="..\Src\customerdisplay.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Src\tank.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Src\rt\rt.h">
+    <ClInclude Include="..\Src\rt\rt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Src\station.h">
+    <ClInclude Include="..\Src\station.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Src\tank.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,22 +1,18 @@
 #ifndef __TANK_H__
 #define __TANK_H__
 
-#include "rt/rt.h"
-#include "station.h"
-
-struct Tank {
-	float remaining;
-	FuelType type;
-};
+//#include "rt/rt.h"
+//#include "station.h"
 
 
 class FuelTank
 {
 private:
-	// litres remaining in tank
-	//float remaining;
-	// Type of fuel
-	//FuelType type;
+	// The Tank datapool
+	struct Tank {
+		float remaining;
+		FuelType type;
+	};
 
 	CDataPool *theDataPool;
 	struct Tank *tank;
@@ -39,6 +35,5 @@ public:
 	// returns the type of fuel in the tank
 	FuelType getType();
 };
-
 
 #endif //__TANK_H__

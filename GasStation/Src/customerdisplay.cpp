@@ -6,13 +6,13 @@
 #include "station.h"
 //#include "customer.h"
 //#include "pump.h"
-//#include "tank.h"
+#include "tank.h"
 
 #define RED     12
 #define GREEN   10
 
-const std::string FIRSTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\firstnames.txt";
-const std::string LASTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\Src\\names\\lastnames.txt";
+const std::string FIRSTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\GasStation\\Src\\names\\firstnames.txt";
+const std::string LASTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\GasStation\\Src\\names\\lastnames.txt";
 
 char *states[4] = { "Arrived", "Ready", "Pumping", "Complete" };
 
@@ -228,121 +228,6 @@ void Customer::generateCC(char *ccnum)
 	}
 }
 
-
-/*=================================================
- *					Tank
- *================================================*/
-class FuelTank
-{
-private:
-	// The Tank datapool
-	struct Tank {
-		float remaining;
-		FuelType type;
-	};
-
-	CDataPool *theDataPool;
-	struct Tank *tank;
-
-	// Mutex to project the remaining amount of fuel
-	CMutex *mRemain;
-
-public:
-	FuelTank();
-	FuelTank(FuelType type, float remaining);
-	FuelTank(const FuelTank &obj);
-	~FuelTank();
-
-	// decrements the tank by 1 litre and returns the number of litres left
-	float decrement();
-	// Fills the tank to full
-	float fill();
-	// returns the amount of fuel remaining
-	float getRemaining();
-	// returns the type of fuel in the tank
-	FuelType getType();
-};
-
-
-FuelTank::FuelTank()
-{
-	//printf("FuelTank default constructor\n");
-	mRemain = new CMutex("remaining", 1);
-
-	theDataPool = new CDataPool(string("OCTANE") + to_string(0), sizeof(struct Tank));
-	tank = (struct Tank *)(theDataPool->LinkDataPool()); 
-
-	mRemain->Wait();
-	tank->remaining = MAX_CAPACITY;
-	tank->type = OCTANE87;
-	mRemain->Signal();
-}
-
-FuelTank::FuelTank(FuelType type, float remaining)
-{
-	//printf("FuelTank constructor %d %1.1f\n", type, remaining);
-	mRemain = new CMutex("remaining", 1);
-
-	theDataPool = new CDataPool(string("OCTANE") + to_string(type), sizeof(struct Tank));
-	tank = (struct Tank *)(theDataPool->LinkDataPool()); 
-
-	mRemain->Wait();
-	tank->remaining = remaining;
-	tank->type = OCTANE87;
-	mRemain->Signal();
-}
-
-FuelTank::FuelTank(const FuelTank &obj)
-{
-	tank->remaining = obj.tank->remaining;
-}
-
-FuelTank::~FuelTank()
-{
-	delete theDataPool;
-}
-
-float FuelTank::decrement()
-{
-	float newVal;
-	
-	mRemain->Wait();
-	tank->remaining = tank->remaining - (float)0.5;
-	newVal = tank->remaining;
-	mRemain->Signal();
-
-	return newVal;
-}
-
-
-float FuelTank::fill()
-{
-	float newVal;
-
-	mRemain->Wait();
-	tank->remaining = MAX_CAPACITY;
-	newVal = tank->remaining;
-	mRemain->Signal();
-
-	return newVal;
-}
-
-float FuelTank::getRemaining()
-{
-	float retVal;
-
-	mRemain->Wait();
-	retVal = tank->remaining;
-	mRemain->Signal();
-
-	//printf(">>> remaining = %1.1f\n", retVal);
-	return retVal;
-}
-
-FuelType FuelTank::getType()
-{
-	return tank->type;
-}
 
 
 /*=================================================

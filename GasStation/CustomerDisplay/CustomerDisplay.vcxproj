@@ -10,6 +10,16 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Src\customerdisplay.cpp" />
+    <ClCompile Include="..\Src\rt\rt.cpp" />
+    <ClCompile Include="..\Src\tank.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Src\rt\rt.h" />
+    <ClInclude Include="..\Src\station.h" />
+    <ClInclude Include="..\Src\tank.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{34121CE1-EFA4-4421-A52D-3F0D52804C51}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -77,14 +87,6 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\Src\main.cpp" />
-    <ClCompile Include="..\..\Src\rt\rt.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\Src\rt\rt.h" />
-    <ClInclude Include="..\..\Src\station.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
