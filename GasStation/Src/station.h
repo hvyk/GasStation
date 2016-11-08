@@ -13,9 +13,9 @@
 
 #define MAX_NAME_LEN	50
 #define CC_NUM_LEN		21
-#define NUM_CUSTOMERS	3
+#define NUM_CUSTOMERS	100
 
-#define NUM_PUMPS		1
+#define NUM_PUMPS		4
 
 #define MIN_QUANTITY	3
 #define MAX_QUANTITY	8
@@ -53,14 +53,14 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 //	float quantity;
 //};
 
-struct custInfo
+typedef struct customer
 {
 	char firstName[MAX_NAME_LEN];
 	char lastName[MAX_NAME_LEN];
 	char ccNum[CC_NUM_LEN];
-	FuelType type;
-	float quantity;
-};
+	//FuelType type;
+	//float quantity;
+} customer_t;
 
 // 0 - arrival
 // 1 - ready to start pumping
@@ -73,16 +73,17 @@ struct custInfo
 #define READY		2
 #define PUMPING		3
 #define	COMPLETE	4
-struct transaction
+typedef struct transaction
 {
 	int state;
-	char firstName[MAX_NAME_LEN];
-	char lastName[MAX_NAME_LEN];
-	char ccNum[CC_NUM_LEN];
+	customer_t customer;
+	//char firstName[MAX_NAME_LEN];
+	//char lastName[MAX_NAME_LEN];
+	//char ccNum[CC_NUM_LEN];
 	time_t time;
 	FuelType type;
 	float quantity;
-};
+} transaction_t;
 
 struct PumpStatus
 {

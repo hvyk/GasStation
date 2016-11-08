@@ -37,6 +37,7 @@ FuelTank::FuelTank(const FuelTank &obj)
 FuelTank::~FuelTank()
 {
 	delete theDataPool;
+	delete mRemain;
 }
 
 float FuelTank::decrement()
