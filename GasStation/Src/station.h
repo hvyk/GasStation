@@ -13,10 +13,12 @@
 
 #define MAX_NAME_LEN	50
 #define CC_NUM_LEN		21
-#define NUM_CUSTOMERS	1
+#define NUM_CUSTOMERS	3
 
 #define NUM_PUMPS		1
 
+#define MIN_QUANTITY	3
+#define MAX_QUANTITY	8
 
 /***********************************************************
  *						Customers

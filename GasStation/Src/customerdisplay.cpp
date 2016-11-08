@@ -84,7 +84,7 @@ public:
 		generateLastName(lastName, MAX_NAME_LEN);
 		generateCC(ccNum);
 		this->type = FuelType(std::rand() % 4);
-		this->quantity = (float)(std::rand() % 110) / 2 + 10;
+		this->quantity = (float)(std::rand() % MAX_QUANTITY) / 2 + MIN_QUANTITY;
 
 		struct custInfo cust;
 		strcpy(cust.firstName, firstName);
@@ -245,6 +245,7 @@ private:
 
 	CSemaphore *PS1;
 	CSemaphore *CS1;
+	CSemaphore *Pumping;
 
 	CPipe *customerPipeline;
 	CSemaphore *customerData;
@@ -325,43 +326,47 @@ public:
 			PS1->Wait();
 			ReadStatus(&trans);
 			assert(trans.state == READY);
+
+			Pumping->Wait();
 			CS1->Signal();
-
-
-			// send to GSC with pumping = true
-			// We are the producer - want to send status info to GSC
-			trans.state = PUMPING;
-			CS1->Wait();
-			WriteStatus(&trans);
-			PS1->Signal();
 
 			dispense(trans.quantity);
+			Pumping->Signal();
 
-			//// Now we are the consumer - waiting for GSC's go-ahead on when
-			//// to start the pump
-			//trans.pumping = false;
-			PS1->Wait();
-			ReadStatus(&trans);
-			assert(trans.state == ACK);
-			CS1->Signal();
+			//// send to GSC with pumping = true
+			//// We are the producer - want to send status info to GSC
+			//trans.state = PUMPING;
+			//CS1->Wait();
+			//WriteStatus(&trans);
+			//dispense(trans.quantity);
+			//PS1->Signal();
 
-			// Wait until pumping done to inform GSC
-			while (dispensingFlg)
-			{
-				Sleep(500);
-			}
 
-			// let the GSC know we are done filling
-			trans.state = COMPLETE;
-			CS1->Wait();
-			WriteStatus(&trans);
-			PS1->Signal();
+			////// Now we are the consumer - waiting for GSC's go-ahead on when
+			////// to start the pump
+			////trans.pumping = false;
+			//PS1->Wait();
+			//ReadStatus(&trans);
+			//assert(trans.state == ACK);
+			//CS1->Signal();
 
-			// Verify the GSC has acknowledged our status update
-			PS1->Wait();
-			ReadStatus(&trans);
-			assert(trans.state == ACK);
-			CS1->Signal();
+			//// Wait until pumping done to inform GSC
+			//while (dispensingFlg)
+			//{
+			//	Sleep(500);
+			//}
+
+			//// let the GSC know we are done filling
+			//trans.state = COMPLETE;
+			//CS1->Wait();
+			//WriteStatus(&trans);
+			//PS1->Signal();
+
+			//// Verify the GSC has acknowledged our status update
+			//PS1->Wait();
+			//ReadStatus(&trans);
+			//assert(trans.state == ACK);
+			//CS1->Signal();
 		}
 
 		//printf("=============================\n");
@@ -387,6 +392,8 @@ Pump::Pump()
 	PS1 = new CSemaphore("StatusProducer0", 0, 1);
 	CS1 = new CSemaphore("StatusConsumer0", 1, 1);
 
+	Pumping = new CSemaphore("Pump0", 1, 1);
+
 	customerPipeline = new CPipe("customerPipeline0");
 	customerData = new CSemaphore("customerData0", 1);
 
@@ -408,12 +415,13 @@ Pump::Pump(int id)
 
 	std::string producerName = "StatusProducer" + std::to_string(this->id);
 	std::string consumerName = "StatusConsumer" + std::to_string(this->id);
+	std::string pumpingName = "Pump" + std::to_string(this->id);
 	std::string customerDataName = "customerData" + std::to_string(this->id);
 	std::string customerPipelineName = "customerPipeline" + std::to_string(this->id);
 
 	PS1 = new CSemaphore(producerName, 0, 1);
 	CS1 = new CSemaphore(consumerName, 1, 1);
-
+	Pumping = new CSemaphore(pumpingName, 1, 1);
 
 	// Create the status datapool
 	std::string dpName = "PumpStatusDP" + std::to_string(id);
@@ -441,8 +449,15 @@ Pump::~Pump()
 
 void Pump::dispense(float quantity)
 {
+	float val = quantity;
 	dispensingFlg = true;
-	Sleep((int)(quantity*1000));
+	while (val > 0)
+	{
+		printf("%1.1f, ", val);
+		Sleep(1000);
+		val -= 0.5;
+	}
+	printf("\n");
 }
 
 //void Pump::Produce(Transaction *trans)
@@ -580,79 +595,91 @@ UINT __stdcall pumpThread(void *args)
 	// index aligned with this threads index/id
 	std::string producerName = "StatusProducer" + std::to_string(id);
 	std::string consumerName = "StatusConsumer" + std::to_string(id);
+	std::string pumpingName = "Pump" + std::to_string(id);
 
 	CSemaphore PS1(producerName, 0, 1);
 	CSemaphore CS1(consumerName, 1, 1);
+	CSemaphore Pumping(pumpingName, 1, 1);
 	
 	// Initialization Rendezvous
 	Initialize.Wait();
 
-	// Read the transaction - ready should be false
-	PS1.Wait();
-	transaction trans;
-	ReadPumpStatus(transDP, &trans);
-	assert(trans.state == ARRIVAL);
-	CS1.Signal();
+	for (int i = 0; i < NUM_CUSTOMERS; i++)
+	{
+		// Read the transaction - ready should be false
+		PS1.Wait();
+		transaction trans;
+		ReadPumpStatus(transDP, &trans);
+		assert(trans.state == ARRIVAL);
+		CS1.Signal();
 
-	// Print details to console
-	ConsoleMutex.Wait();
-	MOVE_CURSOR(10, id * 10);
-	printf("%d)", id);
-	MOVE_CURSOR(10, id * 10 + 1);
-	printf("%s %s", trans.firstName, trans.lastName);
-	MOVE_CURSOR(10, id * 10 + 2);
-	printf("%s", trans.ccNum);
-	MOVE_CURSOR(10, id * 10 + 3);
-	printf("%s", states[trans.state]);
-	MOVE_CURSOR(10, id * 10 + 4);
-	printf("%1.1f", trans.quantity);
-	MOVE_CURSOR(10, id * 10 + 5);
-	printf("%d", trans.type);
-	ConsoleMutex.Signal();
+		// Print details to console
+		ConsoleMutex.Wait();
+		MOVE_CURSOR(10, id * 10);
+		printf("%d)", id);
+		MOVE_CURSOR(10, id * 10 + 1);
+		printf("%s %s", trans.firstName, trans.lastName);
+		MOVE_CURSOR(10, id * 10 + 2);
+		printf("%s", trans.ccNum);
+		MOVE_CURSOR(10, id * 10 + 3);
+		printf("%s", states[trans.state]);
+		MOVE_CURSOR(10, id * 10 + 4);
+		printf("%1.1f", trans.quantity);
+		MOVE_CURSOR(10, id * 10 + 5);
+		printf("%d", trans.type);
+		ConsoleMutex.Signal();
 
-	// Inform the customer they are free to start pumping
-	trans.state = READY;
-	CS1.Wait();
-	WritePumpStatus(transDP, &trans);
-	PS1.Signal();
+		// Inform the customer they are free to start pumping
+		trans.state = READY;
+		CS1.Wait();
+		WritePumpStatus(transDP, &trans);
+		PS1.Signal();
 
-	Sleep(500);
+		MOVE_CURSOR(10, id * 10 + 3);
+		printf("Pumping");
+		Pumping.Wait();
+		Pumping.Signal();
+		MOVE_CURSOR(10, 50);
+		printf("Done\n");
+	}
 
-	// Verify the customer is pumping and update the console
-	PS1.Wait();
-	ReadPumpStatus(transDP, &trans);
-	assert(trans.state == PUMPING);
-	CS1.Signal();
+	//Sleep(500);
 
-	// update the console
-	ConsoleMutex.Wait();
-	MOVE_CURSOR(10, id * 10 + 3);
-	printf("%s", states[trans.state]);
-	ConsoleMutex.Signal();
+	//// Verify the customer is pumping and update the console
+	//PS1.Wait();
+	//ReadPumpStatus(transDP, &trans);
+	//assert(trans.state == PUMPING);
+	//CS1.Signal();
 
-	// Send an ACK
-	trans.state = ACK;
-	CS1.Wait();
-	WritePumpStatus(transDP, &trans);
-	PS1.Signal();
+	//// update the console
+	//ConsoleMutex.Wait();
+	//MOVE_CURSOR(10, id * 10 + 3);
+	//printf("%s", states[trans.state]);
+	//ConsoleMutex.Signal();
 
-	// Verify the customer is complete pumping  and update the console
-	PS1.Wait();
-	ReadPumpStatus(transDP, &trans);
-	assert(trans.state == COMPLETE);
-	CS1.Signal();
+	//// Send an ACK
+	//trans.state = ACK;
+	//CS1.Wait();
+	//WritePumpStatus(transDP, &trans);
+	//PS1.Signal();
 
-	// update the console
-	ConsoleMutex.Wait();
-	MOVE_CURSOR(10, id * 10 + 3);
-	printf("%s", states[trans.state]);
-	ConsoleMutex.Signal();
+	//// Verify the customer is complete pumping  and update the console
+	//PS1.Wait();
+	//ReadPumpStatus(transDP, &trans);
+	//assert(trans.state == COMPLETE);
+	//CS1.Signal();
 
-	// Send an ACK
-	trans.state = ACK;
-	CS1.Wait();
-	WritePumpStatus(transDP, &trans);
-	PS1.Signal();
+	//// update the console
+	//ConsoleMutex.Wait();
+	//MOVE_CURSOR(10, id * 10 + 3);
+	//printf("%s", states[trans.state]);
+	//ConsoleMutex.Signal();
+
+	//// Send an ACK
+	//trans.state = ACK;
+	//CS1.Wait();
+	//WritePumpStatus(transDP, &trans);
+	//PS1.Signal();
 
 	return 0;
 }
