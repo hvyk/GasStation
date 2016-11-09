@@ -34,6 +34,8 @@ public:
 	float getRemaining();
 	// returns the type of fuel in the tank
 	FuelType getType();
+
+	bool isEmpty();
 };
 
 #endif //__TANK_H__

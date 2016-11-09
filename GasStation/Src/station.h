@@ -13,12 +13,12 @@
 
 #define MAX_NAME_LEN	50
 #define CC_NUM_LEN		21
-#define NUM_CUSTOMERS	100
+#define NUM_CUSTOMERS	20
 
 #define NUM_PUMPS		4
 
-#define MIN_QUANTITY	3
-#define MAX_QUANTITY	8
+#define MIN_QUANTITY	10
+#define MAX_QUANTITY	40
 
 /***********************************************************
  *						Customers
@@ -38,7 +38,7 @@ enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 //char* FuelTypeNamesArray[NUM_FUELTYPES] = { "Octane 87", "Octane 89", "Octane 91", "Octane 94" };
 
 // Capacity of the fuel tank
-#define MAX_CAPACITY 500
+#define MAX_CAPACITY 100
 
 
 

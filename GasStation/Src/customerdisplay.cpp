@@ -8,8 +8,16 @@
 //#include "pump.h"
 #include "tank.h"
 
-#define RED     12
-#define GREEN   10
+
+#define WHITE		7
+#define RED			12
+#define GREEN		10
+#define YELLOW		14
+
+#define X_SPACING	10
+#define Y_SPACING	8
+#define X_OFFSET	10
+#define Y_OFFSET	40
 
 const std::string FIRSTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\GasStation\\Src\\names\\firstnames.txt";
 const std::string LASTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\GasStation\\Src\\names\\lastnames.txt";
@@ -22,6 +30,7 @@ const int numRendezvous = NUM_PUMPS * 2 + 2;
 //const int numRendezvous = NUM_PUMPS * 2;
 
 CRendezvous Initialize("InitRendezvous", numRendezvous );
+CRendezvous Customers("CustomersRendezvous", NUM_CUSTOMERS );
 CSemaphore ConsoleMutex("ConsoleMutex", 1);
 
 void WritePumpStatus(transaction_t *transDP, transaction *trans);
@@ -80,6 +89,8 @@ public:
 		// see the rand that uses more than just time (because rand() is thread local)
 		unsigned long seed = mix(clock(), time(NULL), _getpid());
 		srand(seed);
+
+		Customers.Wait();
 
 		// Generate a Customer using 'customer_t'
 		generateFirstName(firstName, MAX_NAME_LEN);
@@ -256,7 +267,7 @@ private:
 	std::string generateCC();
 	void printTransaction(transaction_t *trans, int id, bool producing);
 
-	void dispense(float quantity);
+	void dispense(FuelType octane, float quantity);
 	void generateTransaction(transaction_t *trans, customer_t *cust);
 
 	std::vector<FuelTank *> fuelTanks;
@@ -270,6 +281,10 @@ public:
 
 	int main(void)
 	{
+		// see the rand that uses more than just time (because rand() is thread local)
+		unsigned long seed = mix(clock(), time(NULL), _getpid());
+		srand(seed);
+
 		// Add access to the fuel tanks
 		vector<FuelTank *> fuelTanks;
 		for (int octane = OCTANE87; octane <= OCTANE94; octane++)
@@ -277,9 +292,6 @@ public:
 			FuelTank *tank_i = new FuelTank((FuelType)octane, (float)MAX_CAPACITY);
 			fuelTanks.push_back(tank_i);
 		}
-
-		// Add rendezvous event here
-		Initialize.Wait();
 
 		customer_t cust;
 
@@ -289,6 +301,9 @@ public:
 			theCustomers[i] = new Customer(id);
 			theCustomers[i]->Resume();
 		}
+
+		// Add rendezvous event here
+		Initialize.Wait();
 
 		for (int i = 0; i < NUM_CUSTOMERS; i++)
 		{
@@ -314,7 +329,7 @@ public:
 			Pumping->Wait();
 			CS2->Signal();
 
-			dispense(trans.quantity);
+			dispense(trans.type, trans.quantity);
 			Pumping->Signal();
 		}
 
@@ -402,17 +417,17 @@ Pump::~Pump()
 	delete customerData;
 }
 
-void Pump::dispense(float quantity)
+void Pump::dispense(FuelType octane, float quantity)
 {
 	float val = quantity;
 	dispensingFlg = true;
 	while (val > 0)
 	{
-		//printf("%1.1f, ", val);
-		Sleep(20);
+		fuelTanks[octane]->decrement();
 		val -= 0.5;
+		Sleep(500);
 	}
-	//printf("\n");
+	dispensingFlg = false;
 }
 
 
@@ -528,14 +543,23 @@ int main(int argc, char* argv[])
 
 	// Initialization Rendezvous
 	Initialize.Wait();
-	printf("Done initializing\n");
+	ConsoleMutex.Wait();
+	MOVE_CURSOR(0, 0);
+	printf(".\n");
+	fflush(stdout);
+	ConsoleMutex.Signal();
 
 	for (int i = 0; i < NUM_PUMPS; i++)
 	{
 		pumps[i]->WaitForThread();
 	}
 
-	MOVE_CURSOR(10, 50);
+	ConsoleMutex.Wait();
+	MOVE_CURSOR(0, 1);
+	printf(".\n");
+	fflush(stdout);
+	ConsoleMutex.Signal();
+
 	getchar();
 	return 0;
 }
@@ -543,17 +567,17 @@ int main(int argc, char* argv[])
 void printCustomerInfo(transaction_t *trans, int id)
 {
 		ConsoleMutex.Wait();
-		MOVE_CURSOR(10, id * 10);
+		MOVE_CURSOR(X_SPACING, id * Y_SPACING);
 		printf("%d)", id);
-		MOVE_CURSOR(10, id * 10 + 1);
+		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 1);
 		printf("%s %s", trans->customer.firstName, trans->customer.lastName);
-		MOVE_CURSOR(10, id * 10 + 2);
+		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 2);
 		printf("%s", trans->customer.ccNum);
-		MOVE_CURSOR(10, id * 10 + 3);
+		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 3);
 		printf("%s", states[trans->state]);
-		MOVE_CURSOR(10, id * 10 + 4);
-		printf("%1.1f", trans->quantity);
-		MOVE_CURSOR(10, id * 10 + 5);
+		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 4);
+		printf("xxx / %5.1f", trans->quantity);
+		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 5);
 		printf("%d", trans->type);
 		ConsoleMutex.Signal();
 }
@@ -659,6 +683,62 @@ UINT __stdcall tankThread(void *args)
 
 	// Initializaion Rendezvous
 	Initialize.Wait();
+
+	// Initializaion Rendezvous
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	while (1)
+	{
+		for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+		{
+			float remain = fuelTanks[octane]->getRemaining();
+
+			ConsoleMutex.Wait();
+			if (remain > 0.25 * (float)MAX_CAPACITY)
+			{
+				SetConsoleTextAttribute(hConsole, GREEN);
+			}
+			else
+			{
+				SetConsoleTextAttribute(hConsole, RED);
+			}
+			int numBars = remain / MAX_CAPACITY * 50;
+			MOVE_CURSOR(X_OFFSET, Y_OFFSET + 4 * octane);
+			for (int ii = 0; ii < 50; ii++)
+			{
+				if (remain > 0.5 * (float)MAX_CAPACITY)
+				{
+					SetConsoleTextAttribute(hConsole, GREEN);
+				}
+				else if (remain > 0.25 * (float)MAX_CAPACITY)
+				{
+					SetConsoleTextAttribute(hConsole, YELLOW);
+				}
+				else
+				{
+					SetConsoleTextAttribute(hConsole, RED);
+				}
+
+				if (ii < numBars)
+				{
+					printf("|");
+				}
+				else
+				{
+					printf(" ");
+				}
+			}
+			SetConsoleTextAttribute(hConsole, WHITE);
+			printf("\nFuel %d: %5.1f", octane, fuelTanks[octane]->getRemaining());
+			ConsoleMutex.Signal();
+		}
+		Sleep(200);
+	}
+
+	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
+	{
+		delete fuelTanks[octane];
+	}
 
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
 	{

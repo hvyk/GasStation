@@ -80,10 +80,12 @@
   <ItemGroup>
     <ClInclude Include="..\Src\rt\rt.h" />
     <ClInclude Include="..\Src\station.h" />
+    <ClInclude Include="..\Src\tank.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Src\gasstationcomputer.cpp" />
     <ClCompile Include="..\Src\rt\rt.cpp" />
+    <ClCompile Include="..\Src\tank.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
