@@ -10,15 +10,24 @@
  * for things like pipelines, datapools, etc.  Simply include this file
  * for homogeneity across all classes 
  */
+#define X_SPACING	10
+#define Y_SPACING	8
+#define X_OFFSET	10
+#define TANK_STATUS_Y_OFFSET	4
 
 #define MAX_NAME_LEN	50
 #define CC_NUM_LEN		21
-#define NUM_CUSTOMERS	20
+#define NUM_CUSTOMERS	100
 
 #define NUM_PUMPS		4
 
 #define MIN_QUANTITY	10
-#define MAX_QUANTITY	40
+#define MAX_QUANTITY	70
+
+#define HALF_SECOND		50
+
+// Capacity of the fuel tank
+#define MAX_CAPACITY	500
 
 /***********************************************************
  *						Customers
@@ -37,8 +46,6 @@
 enum FuelType { OCTANE87, OCTANE89, OCTANE91, OCTANE94 };
 //char* FuelTypeNamesArray[NUM_FUELTYPES] = { "Octane 87", "Octane 89", "Octane 91", "Octane 94" };
 
-// Capacity of the fuel tank
-#define MAX_CAPACITY 100
 
 
 

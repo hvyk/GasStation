@@ -14,10 +14,6 @@
 #define GREEN		10
 #define YELLOW		14
 
-#define X_SPACING	10
-#define Y_SPACING	8
-#define X_OFFSET	10
-#define Y_OFFSET	40
 
 const std::string FIRSTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\GasStation\\Src\\names\\firstnames.txt";
 const std::string LASTNAMES = "C:\\Users\\Sean\\School\\Cpen333\\Assignment1\\GasStation\\Src\\names\\lastnames.txt";
@@ -26,8 +22,8 @@ char *states[4] = { "Arrived", "Ready", "Pumping", "Complete" };
 
 // One pump and one pumpStatus thread per pump, plus one tankThread and
 // one pumpThread
-const int numRendezvous = NUM_PUMPS * 2 + 2;
-//const int numRendezvous = NUM_PUMPS * 2;
+//const int numRendezvous = NUM_PUMPS * 2 + 2;
+const int numRendezvous = NUM_PUMPS + 2;
 
 CRendezvous Initialize("InitRendezvous", numRendezvous );
 CRendezvous Customers("CustomersRendezvous", NUM_CUSTOMERS );
@@ -317,6 +313,7 @@ public:
 			// We are the producer - want to send status info to GSC
 			CS1->Wait();
 			WriteStatus(&trans);
+			//printf("GSC Producing\n");
 			PS1->Signal();
 
 			// wait for GSC to respond with state == READY
@@ -327,10 +324,12 @@ public:
 			assert(trans.state == READY);
 
 			Pumping->Wait();
+			//printf("GSC Consuming\n");
 			CS2->Signal();
 
 			dispense(trans.type, trans.quantity);
 			Pumping->Signal();
+			Sleep(200);
 		}
 
 
@@ -375,6 +374,7 @@ Pump::Pump()
 Pump::Pump(int id)
 {
 	this->id = id;
+	//printf("id: %d\n", id);
 	this->dispensingFlg = false;
 
 	std::string producerName1 = "StatusProducer1" + std::to_string(this->id);
@@ -384,6 +384,13 @@ Pump::Pump(int id)
 	std::string pumpingName = "Pump" + std::to_string(this->id);
 	std::string customerDataName = "customerData" + std::to_string(this->id);
 	std::string customerPipelineName = "customerPipeline" + std::to_string(this->id);
+
+	//printf("%s\n%s\n%s\n%s\n",
+	//	producerName1.c_str(),
+	//	consumerName1.c_str(),
+	//	producerName2.c_str(),
+	//	consumerName2.c_str()
+	//);
 
 	PS1 = new CSemaphore(producerName1, 0, 1);
 	CS1 = new CSemaphore(consumerName1, 1, 1);
@@ -425,7 +432,7 @@ void Pump::dispense(FuelType octane, float quantity)
 	{
 		fuelTanks[octane]->decrement();
 		val -= 0.5;
-		Sleep(500);
+		Sleep(HALF_SECOND);
 	}
 	dispensingFlg = false;
 }
@@ -525,14 +532,14 @@ int main(int argc, char* argv[])
 {
 	CThread fuelTankThread(tankThread, ACTIVE, NULL);
 
-	vector<CThread *> threads;
+	//vector<CThread *> threads;
 	vector<Pump *> pumps;
 
 	// Create NUM_PUMPS pumps
 	for (int i = 0; i < NUM_PUMPS; i++)
 	{
-		CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
-		threads.push_back( thread_i );
+		//CThread *thread_i = new CThread(pumpThread, ACTIVE, &i);
+		//threads.push_back( thread_i );
 
 		Pump *pump_i = new Pump(i);
 		pump_i->Resume();
@@ -543,136 +550,130 @@ int main(int argc, char* argv[])
 
 	// Initialization Rendezvous
 	Initialize.Wait();
-	ConsoleMutex.Wait();
-	MOVE_CURSOR(0, 0);
-	printf(".\n");
-	fflush(stdout);
-	ConsoleMutex.Signal();
+	//ConsoleMutex.Wait();
+	//MOVE_CURSOR(0, 0);
+	//printf(".\n");
+	//fflush(stdout);
+	//ConsoleMutex.Signal();
 
 	for (int i = 0; i < NUM_PUMPS; i++)
 	{
 		pumps[i]->WaitForThread();
 	}
 
-	ConsoleMutex.Wait();
-	MOVE_CURSOR(0, 1);
-	printf(".\n");
-	fflush(stdout);
-	ConsoleMutex.Signal();
+	//ConsoleMutex.Wait();
+	//MOVE_CURSOR(0, 1);
+	//printf(".\n");
+	//fflush(stdout);
+	//ConsoleMutex.Signal();
 
 	getchar();
 	return 0;
 }
 
-void printCustomerInfo(transaction_t *trans, int id)
-{
-		ConsoleMutex.Wait();
-		MOVE_CURSOR(X_SPACING, id * Y_SPACING);
-		printf("%d)", id);
-		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 1);
-		printf("%s %s", trans->customer.firstName, trans->customer.lastName);
-		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 2);
-		printf("%s", trans->customer.ccNum);
-		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 3);
-		printf("%s", states[trans->state]);
-		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 4);
-		printf("xxx / %5.1f", trans->quantity);
-		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 5);
-		printf("%d", trans->type);
-		ConsoleMutex.Signal();
-}
-
-/**
- * This represents the communication between the pump and the GSC
- * @param
- *		A pointer to an integer with the thread number to be used to
- *		create the producer and consumer semaphores
- */
-UINT __stdcall pumpThread(void *args)
-{
-	int id = *(int*)args;
-
-	// Create the status datapool
-	std::string dpName = "PumpStatusDP" + std::to_string(id);
-	CDataPool pumpDP(dpName, sizeof(transaction_t));
-	transaction_t *transDP = (transaction_t *)(pumpDP.LinkDataPool());
-
-	// Create the Producer and Consumer Semaphores and give them a name and
-	// index aligned with this threads index/id
-	std::string producerName1 = "StatusProducer1" + std::to_string(id);
-	std::string consumerName1 = "StatusConsumer1" + std::to_string(id);
-	std::string producerName2 = "StatusProducer2" + std::to_string(id);
-	std::string consumerName2 = "StatusConsumer2" + std::to_string(id);
-	std::string pumpingName = "Pump" + std::to_string(id);
-
-	CSemaphore PS1(producerName1, 0, 1);
-	CSemaphore CS1(consumerName1, 1, 1);
-	CSemaphore PS2(producerName2, 0, 1);
-	CSemaphore CS2(consumerName2, 1, 1);
-	CSemaphore Pumping(pumpingName, 1, 1);
-	
-	// Initialization Rendezvous
-	Initialize.Wait();
-
-	for (int i = 0; i < NUM_CUSTOMERS; i++)
-	{
-		transaction trans;
-
-		// Read the transaction - ready should be false
-		PS1.Wait();
-		ReadPumpStatus(transDP, &trans);
-		assert(trans.state == ARRIVAL);
-		CS1.Signal();
-
-		// Print details to console
-		printCustomerInfo(&trans, id);
-
-		// Inform the customer they are free to start pumping
-		CS2.Wait();
-		trans.state = READY;
-		WritePumpStatus(transDP, &trans);
-		PS2.Signal();
-
-		// For debugging purposes
-		//MOVE_CURSOR(10, id * 10 + 3);
-		//printf("Pumping");
-		//Pumping.Wait();
-		//Pumping.Signal();
-		//MOVE_CURSOR(10, 50);
-		//printf("Done\n");
-	}
+//void printCustomerInfo(transaction_t *trans, int id)
+//{
+//		ConsoleMutex.Wait();
+//		MOVE_CURSOR(X_SPACING, id * Y_SPACING);
+//		printf("%d)", id);
+//		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 1);
+//		printf("%s %s", trans->customer.firstName, trans->customer.lastName);
+//		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 2);
+//		printf("%s", trans->customer.ccNum);
+//		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 3);
+//		printf("%s", states[trans->state]);
+//		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 4);
+//		printf("xxx / %5.1f", trans->quantity);
+//		MOVE_CURSOR(X_SPACING, id * Y_SPACING + 5);
+//		printf("%d", trans->type);
+//		ConsoleMutex.Signal();
+//}
+//
+///**
+// * This represents the communication between the pump and the GSC
+// * @param
+// *		A pointer to an integer with the thread number to be used to
+// *		create the producer and consumer semaphores
+// */
+//UINT __stdcall pumpThread(void *args)
+//{
+//	int id = *(int*)args;
+//
+//	// Create the status datapool
+//	std::string dpName = "PumpStatusDP" + std::to_string(id);
+//	CDataPool pumpDP(dpName, sizeof(transaction_t));
+//	transaction_t *transDP = (transaction_t *)(pumpDP.LinkDataPool());
+//
+//	// Create the Producer and Consumer Semaphores and give them a name and
+//	// index aligned with this threads index/id
+//	std::string producerName1 = "StatusProducer1" + std::to_string(id);
+//	std::string consumerName1 = "StatusConsumer1" + std::to_string(id);
+//	std::string producerName2 = "StatusProducer2" + std::to_string(id);
+//	std::string consumerName2 = "StatusConsumer2" + std::to_string(id);
+//	std::string pumpingName = "Pump" + std::to_string(id);
+//
+//	CSemaphore PS1(producerName1, 0, 1);
+//	CSemaphore CS1(consumerName1, 1, 1);
+//	CSemaphore PS2(producerName2, 0, 1);
+//	CSemaphore CS2(consumerName2, 1, 1);
+//	CSemaphore Pumping(pumpingName, 1, 1);
+//	
+//	// Initialization Rendezvous
+//	Initialize.Wait();
+//
+//	for (int i = 0; i < NUM_CUSTOMERS; i++)
+//	{
+//		transaction trans;
+//
+//		// Read the transaction - ready should be false
+//		PS1.Wait();
+//		ReadPumpStatus(transDP, &trans);
+//		assert(trans.state == ARRIVAL);
+//		CS1.Signal();
+//
+//		// Print details to console
+//		printCustomerInfo(&trans, id);
+//
+//		// Inform the customer they are free to start pumping
+//		CS2.Wait();
+//		trans.state = READY;
+//		WritePumpStatus(transDP, &trans);
+//		PS2.Signal();
+//	}
+//
+//
+//	return 0;
+//}
 
 
-	return 0;
-}
-
-
-void WritePumpStatus(transaction_t *transDP, transaction *trans)
-{
-	transDP->state = trans->state;
-	strcpy(transDP->customer.firstName, trans->customer.firstName);
-	strcpy(transDP->customer.lastName, trans->customer.lastName);
-	strcpy(transDP->customer.ccNum, trans->customer.ccNum);
-	transDP->time = trans->time;
-	transDP->type = trans->type;
-	transDP->quantity = trans->quantity;
-}
-
-
-void ReadPumpStatus(transaction_t *transDP, transaction *trans)
-{
-	trans->state = transDP->state;
-	strcpy(trans->customer.firstName, transDP->customer.firstName);
-	strcpy(trans->customer.lastName, transDP->customer.lastName);
-	strcpy(trans->customer.ccNum, transDP->customer.ccNum);
-	trans->time = transDP->time;
-	trans->type = transDP->type;
-	trans->quantity = transDP->quantity;
-}
+//void WritePumpStatus(transaction_t *transDP, transaction *trans)
+//{
+//	transDP->state = trans->state;
+//	strcpy(transDP->customer.firstName, trans->customer.firstName);
+//	strcpy(transDP->customer.lastName, trans->customer.lastName);
+//	strcpy(transDP->customer.ccNum, trans->customer.ccNum);
+//	transDP->time = trans->time;
+//	transDP->type = trans->type;
+//	transDP->quantity = trans->quantity;
+//}
+//
+//
+//void ReadPumpStatus(transaction_t *transDP, transaction *trans)
+//{
+//	trans->state = transDP->state;
+//	strcpy(trans->customer.firstName, transDP->customer.firstName);
+//	strcpy(trans->customer.lastName, transDP->customer.lastName);
+//	strcpy(trans->customer.ccNum, transDP->customer.ccNum);
+//	trans->time = transDP->time;
+//	trans->type = transDP->type;
+//	trans->quantity = transDP->quantity;
+//}
 
 
 UINT __stdcall tankThread(void *args)
 {
+	int numBars;
+
 	// Create the fuel tanks
 	vector<FuelTank *> fuelTanks;
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
@@ -694,6 +695,7 @@ UINT __stdcall tankThread(void *args)
 			float remain = fuelTanks[octane]->getRemaining();
 
 			ConsoleMutex.Wait();
+
 			if (remain > 0.25 * (float)MAX_CAPACITY)
 			{
 				SetConsoleTextAttribute(hConsole, GREEN);
@@ -702,8 +704,11 @@ UINT __stdcall tankThread(void *args)
 			{
 				SetConsoleTextAttribute(hConsole, RED);
 			}
-			int numBars = remain / MAX_CAPACITY * 50;
-			MOVE_CURSOR(X_OFFSET, Y_OFFSET + 4 * octane);
+
+			numBars = remain / MAX_CAPACITY * 50;
+
+			MOVE_CURSOR(X_OFFSET, TANK_STATUS_Y_OFFSET + 4 * octane);
+
 			for (int ii = 0; ii < 50; ii++)
 			{
 				if (remain > 0.5 * (float)MAX_CAPACITY)
@@ -733,11 +738,6 @@ UINT __stdcall tankThread(void *args)
 			ConsoleMutex.Signal();
 		}
 		Sleep(200);
-	}
-
-	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
-	{
-		delete fuelTanks[octane];
 	}
 
 	for (int octane = OCTANE87; octane <= OCTANE94; octane++)
